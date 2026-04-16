@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, Shield, Info, MoreHorizontal, Skull, Zap, Droplet, 
   Flame, Wind, Brain, Users, Trash2, ChevronDown, GripVertical, 
@@ -27,6 +27,18 @@ const EntityCard = ({
   const isBloodied = entity.hp <= entity.maxHp / 2;
   const isDead = entity.hp <= 0;
 
+  const prevHpRef = useRef(entity.hp);
+  const [showDamageFlash, setShowDamageFlash] = useState(false);
+
+  useEffect(() => {
+    if (entity.hp < prevHpRef.current) {
+      setShowDamageFlash(true);
+      const timer = setTimeout(() => setShowDamageFlash(false), 500);
+      return () => clearTimeout(timer);
+    }
+    prevHpRef.current = entity.hp;
+  }, [entity.hp]);
+
   const handleApplyDamage = (e) => {
     e.stopPropagation();
     const val = parseInt(dmgInput);
@@ -52,163 +64,224 @@ const EntityCard = ({
     <motion.div
       layout
       initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ 
+        opacity: 1, 
+        y: 0,
+        x: showDamageFlash ? [0, -4, 4, -4, 4, 0] : 0
+      }}
       className={cn(
-        "group relative flex flex-col rounded-2xl glass transition-all overflow-hidden",
-        isActive ? "ring-2 ring-health-base bg-dragon-800/80 shadow-health-base/10" : "hover:bg-dragon-900/60",
+        "group relative flex flex-col rounded-2xl glass transition-all duration-500 overflow-hidden",
+        isActive ? "ring-2 ring-health-base bg-dragon-800/90 shadow-[0_0_20px_rgba(16,185,129,0.15)]" : "hover:bg-dragon-900/60",
         isUpcoming && !isActive && "ring-1 ring-white/10 opacity-90",
-        isDead && "grayscale-[0.5] opacity-60"
+        isDead && "grayscale-[0.8] opacity-50 contrast-75",
+        isBloodied && !isDead && "shadow-[inset_0_0_20px_rgba(244,63,94,0.1)] border-rose-500/20"
       )}
     >
+      {/* Visual Feedback Overlays */}
+      <AnimatePresence>
+        {showDamageFlash && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.4, 0] }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-rose-500/20 pointer-events-none z-20"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Active Marker */}
       <AnimatePresence>
         {isActive && (
           <motion.div 
-            initial={{ width: 0 }} animate={{ width: 4 }}
-            className="absolute left-0 top-0 bottom-0 bg-health-base z-10"
+            initial={{ width: 0 }} animate={{ width: 6 }}
+            className="absolute left-0 top-0 bottom-0 bg-health-base z-30 shadow-[2px_0_10px_rgba(16,185,129,0.5)]"
           />
         )}
       </AnimatePresence>
 
       <div className="flex flex-col md:flex-row items-stretch">
         {/* Left: Drag Handle & Initiative */}
-        <div className="flex items-center gap-3 p-3 md:p-4 border-b md:border-b-0 md:border-r border-white/5">
-          <div className="cursor-grab text-dragon-600 hover:text-dragon-400 active:cursor-grabbing">
+        <div className={cn(
+          "flex items-center gap-4 p-3 md:p-4 border-b md:border-b-0 md:border-r border-white/5 transition-colors duration-500",
+          isActive ? "bg-health-base/5" : ""
+        )}>
+          <div className="cursor-grab text-dragon-600 hover:text-dragon-300 active:cursor-grabbing">
             <GripVertical className="w-5 h-5" />
           </div>
           
           <div className="flex flex-col items-center">
-            <input 
-              type="number"
-              value={entity.initiative}
-              onChange={(e) => updateEntity({ initiative: parseInt(e.target.value) || 0 })}
-              className="w-12 h-10 glass rounded-lg text-center font-mono font-bold text-lg text-indigo-400 outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-            <span className="text-[10px] font-bold text-dragon-500 uppercase mt-1">Init</span>
+            <div className="relative group/init">
+              <input 
+                type="number"
+                value={entity.initiative}
+                onChange={(e) => updateEntity({ initiative: parseInt(e.target.value) || 0 })}
+                className="w-12 h-10 glass bg-dragon-950/50 rounded-lg text-center font-mono font-black text-xl text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              />
+              <div className="absolute -inset-1 rounded-lg bg-indigo-500 opacity-0 group-hover/init:opacity-5 blur-sm transition-opacity" />
+            </div>
+            <span className="text-[9px] font-black text-dragon-500 uppercase tracking-widest mt-1">Init</span>
           </div>
         </div>
 
-        {/* Center: Info & HP */}
-        <div className="flex-1 flex flex-col md:flex-row items-center gap-4 p-3 md:p-4">
-          <div className="flex-1 min-w-0 w-full">
-            <div className="flex items-center gap-2 mb-1">
+        {/* Center: Info Area */}
+        <div className="flex-1 flex flex-col md:flex-row items-center gap-6 p-3 md:p-4">
+          <div className="flex-1 min-w-0 w-full relative">
+            <div className="flex items-center gap-2 mb-1.5">
               <input 
                 value={entity.name}
                 onChange={(e) => updateEntity({ name: e.target.value })}
                 className={cn(
-                  "bg-transparent font-serif font-bold text-xl outline-none focus:border-b border-indigo-500/50 truncate w-full",
-                  entity.isPlayer ? "text-indigo-300" : "text-rose-300"
+                  "bg-transparent font-serif font-bold text-2xl outline-none focus:border-b-2 border-indigo-500/50 truncate w-full transition-all",
+                  entity.isPlayer ? "text-indigo-200" : "text-rose-200"
                 )}
               />
               <button 
                 onClick={() => updateEntity({ hidden: !entity.hidden })}
-                className="text-dragon-500 hover:text-white transition-colors"
-                title="Visible in Player Export"
+                className={cn(
+                  "p-1.5 rounded-lg transition-all",
+                  entity.hidden ? "text-dragon-500 bg-white/5" : "text-dragon-400 hover:text-white"
+                )}
+                title="Visibility Toggle"
               >
                 {entity.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
             
-            <div className="flex flex-wrap gap-2 items-center">
-              <div className="flex items-center gap-3 mr-2">
-                <div className="flex items-center gap-1 group/field">
-                  <Shield className="w-3 h-3 text-indigo-400 opacity-50" />
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex items-center glass-dark px-2 py-1 rounded-lg border border-white/5 gap-3">
+                <div className="flex items-center gap-1.5 group/stat">
+                  <Shield className="w-3.5 h-3.5 text-indigo-400" />
                   <input 
                     type="number"
                     value={entity.ac || 10}
                     onChange={(e) => updateEntity({ ac: parseInt(e.target.value) || 0 })}
-                    className="w-6 bg-transparent text-[10px] font-bold text-dragon-300 outline-none"
-                    title="Armor Class"
+                    className="w-5 bg-transparent text-xs font-black text-dragon-200 outline-none"
+                    title="AC"
                   />
                 </div>
-                {!entity.isPlayer && (
-                  <div className="flex items-center gap-1 group/field">
-                    <Target className="w-3 h-3 text-rose-400 opacity-50" />
+                <div className="w-px h-3 bg-white/10" />
+                {!entity.isPlayer ? (
+                  <div className="flex items-center gap-1.5 group/stat">
+                    <Target className="w-3.5 h-3.5 text-rose-400" />
                     <input 
                       type="number"
                       value={entity.dc || 10}
                       onChange={(e) => updateEntity({ dc: parseInt(e.target.value) || 0 })}
-                      className="w-6 bg-transparent text-[10px] font-bold text-dragon-300 outline-none"
-                      title="Save DC"
+                      className="w-5 bg-transparent text-xs font-black text-dragon-200 outline-none"
+                      title="DC"
                     />
                   </div>
+                ) : (
+                  <User className="w-3.5 h-3.5 text-indigo-500" />
                 )}
               </div>
 
-              {entity.concentration && (
-                <span className="px-2 py-0.5 rounded-full bg-warning-dark/20 border border-warning-base/30 text-warning-light text-[10px] font-bold flex items-center gap-1">
-                  <Brain className="w-3 h-3" /> Concentration
-                </span>
-              )}
-              {entity.groupId && (
-                <span className="px-2 py-0.5 rounded-full bg-indigo-950/20 border border-indigo-500/30 text-indigo-300 text-[10px] font-bold flex items-center gap-1">
-                  <Users className="w-3 h-3" /> {entity.groupId}
-                </span>
-              )}
-              {entity.conditions.map(c => (
-                <span key={c} className="px-2 py-0.5 rounded-full bg-dragon-800 border border-white/10 text-dragon-300 text-[10px] font-bold">
-                  {c}
-                </span>
-              ))}
+              <div className="flex flex-wrap gap-2">
+                {entity.concentration && (
+                  <motion.span 
+                    animate={{ scale: [1, 1.05, 1], rotate: [0, 1, -1, 0] }}
+                    transition={{ repeat: Infinity, duration: 3 }}
+                    className="px-2.5 py-1 rounded-lg bg-warning-base/10 border border-warning-base/40 text-warning-light text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.1)]"
+                  >
+                    <Zap className="w-3 h-3 fill-current" /> Concentrating
+                  </motion.span>
+                )}
+                {entity.groupId && (
+                  <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/40 text-indigo-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                    <Users className="w-3 h-3" /> {entity.groupId}
+                  </span>
+                )}
+                {entity.conditions.map(c => (
+                  <span key={c} className="px-2.5 py-1 rounded-lg bg-dragon-800 border-white/10 border text-dragon-200 text-[10px] font-black uppercase tracking-wider">
+                    {c}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="flex-1 md:w-32">
-              <div className="flex justify-between items-end mb-1">
-                <span className="text-[10px] font-bold text-dragon-500 uppercase tracking-widest">
-                  {entity.tempHp > 0 ? `HP (+${entity.tempHp} Temp)` : 'HP'}
-                </span>
-                <span className={cn(
-                  "text-xs font-mono font-bold",
-                  isDead ? "text-dragon-500" : (isBloodied ? "text-rose-400" : "text-health-base")
-                )}>
-                  {entity.hp} / {entity.maxHp}
-                </span>
+          {/* HP Console */}
+          <div className="flex flex-col lg:flex-row items-center gap-6 w-full md:w-auto">
+            <div className="w-full md:w-40 shrink-0">
+              <div className="flex justify-between items-baseline mb-2">
+                <div className="flex items-baseline gap-1.5">
+                  <span className={cn(
+                    "text-2xl font-black font-mono",
+                    isDead ? "text-dragon-600" : (isBloodied ? "text-rose-400" : "text-health-base")
+                  )}>
+                    {entity.hp}
+                  </span>
+                  <span className="text-[10px] font-black text-dragon-600 uppercase">/ {entity.maxHp}</span>
+                </div>
+                {entity.tempHp > 0 && (
+                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-black border border-indigo-500/30">
+                    +{entity.tempHp}
+                  </span>
+                )}
               </div>
-              <div className="h-2 bg-dragon-950 rounded-full overflow-hidden flex">
+              <div className="h-2.5 bg-dragon-950/50 rounded-full overflow-hidden border border-white/5 relative">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${hpPercent}%` }}
+                  transition={{ type: "spring", stiffness: 100, damping: 15 }}
                   className={cn(
-                    "h-full rounded-full transition-colors duration-500",
-                    isDead ? "bg-dragon-800" : (isBloodied ? "bg-rose-500" : "bg-health-base")
+                    "h-full rounded-full relative transition-colors duration-500",
+                    isDead ? "bg-dragon-800" : (isBloodied ? "bg-rose-600" : "bg-health-base")
                   )}
-                />
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
+                </motion.div>
               </div>
             </div>
 
-            <div className="flex glass rounded-lg p-1 border-white/5">
+            <div className="flex items-stretch glass-dark rounded-xl p-1.5 border border-white/10 shadow-lg gap-1.5">
                <input 
                 type="number"
                 placeholder="Amt"
                 value={dmgInput}
                 onChange={(e) => setDmgInput(e.target.value)}
-                className="w-12 h-8 bg-transparent text-center font-bold text-sm outline-none placeholder:text-dragon-600"
+                className="w-14 bg-dragon-900/50 rounded-lg text-center font-black text-sm outline-none placeholder:text-dragon-700 focus:ring-1 focus:ring-white/10 transition-all h-10"
                />
-               <select 
-                value={dmgType}
-                onChange={(e) => setDmgType(e.target.value)}
-                className="bg-transparent text-[10px] font-bold uppercase tracking-tight text-dragon-400 outline-none w-20 px-1"
-               >
-                 {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-               </select>
-               <button onClick={handleApplyDamage} className="p-1 px-2 text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"><Minus className="w-4 h-4" /></button>
-               <button onClick={handleApplyHealing} className="p-1 px-2 text-health-base hover:bg-health-base/10 rounded-md transition-colors"><Plus className="w-4 h-4" /></button>
+               <div className="relative">
+                 <select 
+                  value={dmgType}
+                  onChange={(e) => setDmgType(e.target.value)}
+                  className="bg-dragon-900/50 rounded-lg text-[10px] font-black uppercase tracking-tighter text-dragon-400 outline-none w-24 px-2 h-10 appearance-none border border-transparent focus:border-white/10"
+                 >
+                   {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                 </select>
+                 <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-dragon-600" />
+               </div>
+               <div className="flex gap-1">
+                 <button 
+                  onClick={handleApplyDamage} 
+                  className="w-10 h-10 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg transition-all active:scale-90"
+                  title="Damage"
+                 >
+                   <Minus className="w-5 h-5" />
+                 </button>
+                 <button 
+                  onClick={handleApplyHealing} 
+                  className="w-10 h-10 flex items-center justify-center bg-health-base/10 hover:bg-health-base text-health-base hover:text-white rounded-lg transition-all active:scale-90"
+                  title="Heal"
+                 >
+                   <Plus className="w-5 h-5" />
+                 </button>
+               </div>
             </div>
           </div>
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2 p-3 md:p-4 border-t md:border-t-0 md:border-l border-white/5">
+        <div className="flex items-center gap-2 p-3 md:p-4 border-t md:border-t-0 md:border-l border-white/5 bg-white/[0.02]">
           <button 
             onClick={() => setExpanded(!expanded)}
             className={cn(
-              "p-2 rounded-lg glass-dark text-dragon-400 hover:text-white transition-all",
-              expanded && "bg-dragon-800 text-indigo-400"
+              "p-2.5 rounded-xl transition-all duration-300",
+              expanded ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "glass-dark text-dragon-400 hover:text-dragon-200"
             )}
           >
-            <Settings className={cn("w-5 h-5 transition-transform", expanded && "rotate-90")} />
+            <Settings className={cn("w-5 h-5 transition-transform duration-500", expanded && "rotate-180")} />
           </button>
         </div>
       </div>

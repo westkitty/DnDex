@@ -88,3 +88,26 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser validation of damage icons and round increment transitions.
 
 **Commit Snapshot**: [Loop 1 Final]
+
+## [2026-04-16] Loop 2: Entity Card UX Overhaul
+**Objective**: Modernize the Entity Card layout and implement tactile visual feedback for combat actions.
+**Reasoning**: Users needed clearer confirmation when applying damage/healing. The "Bloodied" and "Dead" states were previously too subtle for a high-density encounter.
+
+**Files Modified**:
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Refactored Layout, Added Framer Motion shake/flash animations, implemented advanced visual states (Bloodied pulse, Dead desaturation).
+
+**Harness Execution**:
+- Commands Run: `npm run test:harness`
+- Results: 5/5 Tests Passed. Refactoring did not break state machine logic.
+
+**Visual Improvements**:
+- Stat Blocks: Grouped AC/DC with icons in a clear "stat pill".
+- Tactical Feedback: Card shakes sideways and flashes red when damage is taken.
+- Status Presence: Concentration tag now pulses/rotates to maintain DM awareness.
+- Health Archetypes: Crimson inner glow for "Bloodied" entities; monochrome desaturation for "Dead" entities.
+
+**Validation**:
+- Automated: Vitest suite.
+- Manual: Browser verification of all dynamic states and animations.
+
+**Commit Snapshot**: [Loop 2 Final]
