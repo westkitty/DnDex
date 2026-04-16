@@ -200,3 +200,24 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser verified math correctness and layout stability. Verified that applying damage after modification works as expected.
 
 **Commit Snapshot**: [Loop 6 Final]
+
+## [2026-04-16] Loop 7: Concentration Save Automation
+**Objective**: Automate spellcasting focus tracking and resolution.
+**Reasoning**: Concentration is one of the most forgotten and mechanics-heavy aspects of D&D 5e combat. Automating the Save DC calculation and resolution reduces DM overhead.
+
+**Files Modified**:
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Updated alert generation with tactical metadata; added resolveConcentration logic.
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Propagated resolution handlers.
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Implemented card-situated resolution UI.
+- [TopBar.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx): Filtered marquee for tactical clarity.
+
+**Automation Summary**:
+- **Trigger**: Any damage to a concentrating creature automatically calculates the Save DC (min 10 or half damage).
+- **Resolution**: Card-situated UI permits one-click 'Pass' or 'Fail'.
+- **Outcome**: 'Fail' instantly strips the concentration status.
+
+**Validation**:
+- Automated: 8/8 Tests Passed.
+- Manual: Browser verified end-to-end automation and stability.
+
+**Commit Snapshot**: [Loop 7 Final]

@@ -3,8 +3,13 @@ import { Reorder, AnimatePresence, useDragControls } from 'framer-motion';
 import EntityCard from './EntityCard';
 import { Flag, Zap } from 'lucide-react';
 
-const InitiativeItem = ({ entity, index, turnIndex, entities, updateEntity, removeEntity, applyDamage, applyHealing }) => {
+const InitiativeItem = ({ 
+  entity, index, turnIndex, entities, updateEntity, removeEntity, 
+  applyDamage, applyHealing, resolveConcentration, alerts 
+}) => {
   const dragControls = useDragControls();
+
+  const entityAlerts = alerts.filter(a => a.entityId === entity.id);
 
   return (
     <Reorder.Item
@@ -24,6 +29,8 @@ const InitiativeItem = ({ entity, index, turnIndex, entities, updateEntity, remo
         removeEntity={removeEntity}
         applyDamage={applyDamage}
         applyHealing={applyHealing}
+        resolveConcentration={resolveConcentration}
+        alerts={entityAlerts}
         dragControls={dragControls}
       />
     </Reorder.Item>
@@ -31,8 +38,11 @@ const InitiativeItem = ({ entity, index, turnIndex, entities, updateEntity, remo
 };
 
 const InitiativeLedger = ({ encounter }) => {
-  const { state, setEntitiesOrder, updateEntity, removeEntity, applyDamage, applyHealing } = encounter;
-  const { entities, turnIndex } = state;
+  const { 
+    state, setEntitiesOrder, updateEntity, removeEntity, 
+    applyDamage, applyHealing, resolveConcentration 
+  } = encounter;
+  const { entities, turnIndex, alerts } = state;
 
   return (
     <div className="space-y-4 pb-32">
@@ -64,6 +74,8 @@ const InitiativeLedger = ({ encounter }) => {
               removeEntity={() => removeEntity(entity.id)}
               applyDamage={(amt, type, group) => applyDamage(entity.id, amt, type, group)}
               applyHealing={(amt, group) => applyHealing(entity.id, amt, group)}
+              resolveConcentration={resolveConcentration}
+              alerts={alerts}
             />
           ))}
         </AnimatePresence>

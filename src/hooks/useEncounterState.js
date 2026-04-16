@@ -294,8 +294,10 @@ export const useEncounterState = () => {
             const dc = Math.max(10, Math.floor(actualDamage / 2));
             newAlerts.push({
               id: generateId(),
+              entityId: e.id,
+              dc: dc,
               message: `${e.name} must make a DC ${dc} Concentration save!`,
-              type: 'warning'
+              type: 'concentration'
             });
           }
 
@@ -307,13 +309,48 @@ export const useEncounterState = () => {
       return {
         ...prev,
         entities: newEntities,
-        alerts: newAlerts.slice(0, 5)
+        alerts: newAlerts.slice(0, 10) // Allow more alerts now that we filter them
       };
     }, (prev, next) => {
       const target = prev.entities.find(e => e.id === id);
       return `${target?.name} ${toGroup ? 'Group' : ''} took ${amount} ${type} damage.`;
     });
   }, [updateState]);
+
+  const resolveConcentration = useCallback((alertId, success) => {
+    setState(prev => {
+      const alert = prev.alerts.find(a => a.id === alertId);
+      if (!alert) return prev;
+
+      let newEntities = prev.entities;
+      if (!success) {
+        newEntities = prev.entities.map(e => 
+          e.id === alert.entityId ? { ...e, concentration: false } : e
+        );
+      }
+
+      const newState = {
+        ...prev,
+        entities: newEntities,
+        alerts: prev.alerts.filter(a => a.id !== alertId),
+        lastUpdated: Date.now()
+      };
+
+      // Add to logs
+      const entity = prev.entities.find(e => e.id === alert.entityId);
+      const note = success ? `${entity?.name} maintained concentration.` : `${entity?.name} lost concentration!`;
+      
+      // We manually update history here since we aren't using updateState
+      const newHistory = prev.history.slice(0, prev.historyPointer + 1);
+      newHistory.push({ ...newState, note: note });
+
+      return {
+        ...newState,
+        history: newHistory,
+        historyPointer: newHistory.length - 1
+      };
+    });
+  }, []);
 
   const advanceTurn = useCallback((direction = 1) => {
     updateState(prev => {
@@ -402,6 +439,7 @@ export const useEncounterState = () => {
     undo,
     redo,
     syncStatus,
+    resolveConcentration,
     canUndo: state.historyPointer > 0,
     canRedo: state.historyPointer < state.history.length - 1,
   };

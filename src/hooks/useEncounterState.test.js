@@ -175,4 +175,31 @@ describe('DM Hub State Machine Harness', () => {
     expect(result.current.state.entities[0].hp).toBe(10);
     expect(result.current.state.historyPointer).toBe(1); // Back to 'Add Monster' state
   });
+
+  test('Resolving concentration failures correctly updates state', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => {
+      result.current.addEntity(false);
+    });
+
+    const id = result.current.state.entities[0].id;
+
+    act(() => {
+      result.current.updateEntity(id, { concentration: true });
+      result.current.applyDamage(id, 10, 'Slashing');
+    });
+
+    const alert = result.current.state.alerts.find(a => a.type === 'concentration');
+    expect(alert).toBeDefined();
+    expect(alert.dc).toBe(10);
+
+    act(() => {
+      result.current.resolveConcentration(alert.id, false); // Fail
+    });
+
+    expect(result.current.state.entities[0].concentration).toBe(false);
+    expect(result.current.state.alerts.find(a => a.id === alert.id)).toBeUndefined();
+  });
 });

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, Shield, Info, MoreHorizontal, Skull, Zap, Droplet, 
   Flame, Wind, Brain, Users, Trash2, ChevronDown, GripVertical, 
-  Eye, EyeOff, Minus, Plus, Settings, ScrollText, Swords, Target
+  Eye, EyeOff, Minus, Plus, Settings, ScrollText, Swords, Target, User
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { clsx } from 'clsx';
@@ -16,7 +16,8 @@ function cn(...inputs) {
 }
 
 const EntityCard = ({ 
-  entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing, dragControls 
+  entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing, 
+  resolveConcentration, alerts, dragControls 
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [dmgInput, setDmgInput] = useState('');
@@ -192,6 +193,31 @@ const EntityCard = ({
                     <Zap className="w-3 h-3 fill-current" /> Concentrating
                   </motion.span>
                 )}
+                {/* Concentration Resolution Alerts */}
+                {alerts?.filter(a => a.type === 'concentration').map(alert => (
+                  <motion.div 
+                    key={alert.id}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex items-center gap-2 px-2 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-200 text-[10px] font-bold"
+                  >
+                    <span>Save DC {alert.dc}</span>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => resolveConcentration(alert.id, true)}
+                        className="px-1.5 py-0.5 bg-health-base/20 hover:bg-health-base/40 border border-health-base/30 rounded text-[8px] uppercase tracking-tighter transition-colors"
+                      >
+                        Pass
+                      </button>
+                      <button 
+                        onClick={() => resolveConcentration(alert.id, false)}
+                        className="px-1.5 py-0.5 bg-rose-500/30 hover:bg-rose-500/50 border border-rose-500/40 rounded text-[8px] uppercase tracking-tighter transition-colors"
+                      >
+                        Fail
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
                 {entity.groupId && (
                   <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/40 text-indigo-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
                     <Users className="w-3 h-3" /> {entity.groupId}

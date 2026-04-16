@@ -98,10 +98,10 @@ const TopBar = ({ encounter, toggleRules }) => {
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
-        {state.alerts.length > 0 && (
+        {state.alerts.filter(a => a.type !== 'concentration').length > 0 && (
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning-dark/20 border border-warning-base/30 text-warning-light text-xs font-bold animate-pulse">
             <AlertCircle className="w-4 h-4" />
-            {state.alerts[0].message}
+            {state.alerts.filter(a => a.type !== 'concentration')[0].message}
           </div>
         )}
 
