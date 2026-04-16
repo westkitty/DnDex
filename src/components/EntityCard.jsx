@@ -241,13 +241,31 @@ const EntityCard = ({
             </div>
 
             <div className="flex items-stretch glass-dark rounded-xl p-1.5 border border-white/10 shadow-lg gap-1.5">
-               <input 
-                type="number"
-                placeholder="Amt"
-                value={dmgInput}
-                onChange={(e) => setDmgInput(e.target.value)}
-                className="w-14 bg-dragon-900/50 rounded-lg text-center font-black text-sm outline-none placeholder:text-dragon-700 focus:ring-1 focus:ring-white/10 transition-all h-10"
-               />
+               <div className="flex flex-col gap-1">
+                 <input 
+                  type="number"
+                  placeholder="Amt"
+                  value={dmgInput}
+                  onChange={(e) => setDmgInput(e.target.value)}
+                  className="w-14 bg-dragon-900/50 rounded-lg text-center font-black text-sm outline-none placeholder:text-dragon-700 focus:ring-1 focus:ring-white/10 transition-all h-10"
+                 />
+                 <div className="flex gap-1">
+                   <button 
+                    onClick={() => setDmgInput(Math.floor(parseInt(dmgInput) / 2 || 0).toString())}
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-[8px] font-black py-0.5 rounded border border-white/5 uppercase transition-colors"
+                    title="Half (Resistance)"
+                   >
+                     1/2
+                   </button>
+                   <button 
+                    onClick={() => setDmgInput((parseInt(dmgInput) * 2 || 0).toString())}
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-[8px] font-black py-0.5 rounded border border-white/5 uppercase transition-colors"
+                    title="Double (Vulnerability)"
+                   >
+                     2x
+                   </button>
+                 </div>
+               </div>
                <div className="relative">
                  <select 
                   value={dmgType}

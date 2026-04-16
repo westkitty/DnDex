@@ -183,3 +183,20 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser verified the sync transition and backdrop-blur styling.
 
 **Commit Snapshot**: [Loop 5 Final]
+
+## [2026-04-16] Loop 6: Tactical Quick-Damage Shortcuts
+**Objective**: Accelerate combat math with one-click damage modifiers.
+**Reasoning**: Resistance and vulnerability are high-frequency events in D&D. Manual calculation slows down the DM and introduces errors.
+
+**Files Modified**:
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Added 1/2 and 2x shortcut buttons with math logic; refined console layout for density.
+
+**Feature Summary**:
+- **Resistance (1/2)**: Instantly halves the current 'Amt' value (Math.floor).
+- **Vulnerability (2x)**: Instantly doubles the current 'Amt' value.
+- **Tactile UI**: Modifier row positioned directly under the input field for minimal mouse movement.
+
+**Validation**:
+- Manual: Browser verified math correctness and layout stability. Verified that applying damage after modification works as expected.
+
+**Commit Snapshot**: [Loop 6 Final]
