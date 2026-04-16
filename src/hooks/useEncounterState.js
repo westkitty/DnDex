@@ -298,23 +298,18 @@ export const useEncounterState = () => {
     });
   }, [updateState]);
 
-  const reorderEntities = useCallback((startIndex, endIndex) => {
+  const setEntitiesOrder = useCallback((newOrder) => {
     updateState(prev => {
-      const result = Array.from(prev.entities);
-      const [removed] = result.splice(startIndex, 1);
-      result.splice(endIndex, 0, removed);
-
       const activeId = prev.entities[prev.turnIndex]?.id;
-      const newTurnIndex = result.findIndex(e => e.id === activeId);
+      const newTurnIndex = newOrder.findIndex(e => e.id === activeId);
 
       return {
         ...prev,
-        entities: result,
+        entities: newOrder,
         turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
       };
-    }, `Manual initiative override for ${state.entities[startIndex]?.name}.`);
-  }, [updateState, state.entities]);
-
+    });
+  }, [updateState]);
   return {
     state,
     addEntity,
@@ -325,7 +320,7 @@ export const useEncounterState = () => {
     applyHealing,
     addAlert,
     clearAlert,
-    reorderEntities,
+    setEntitiesOrder,
     importState,
     undo,
     redo,

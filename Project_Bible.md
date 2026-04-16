@@ -111,3 +111,28 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser verification of all dynamic states and animations.
 
 **Commit Snapshot**: [Loop 2 Final]
+
+## [2026-04-16] Loop 3: Initiative Reordering Polish
+**Objective**: Implement seamless, state-synced drag-and-drop reordering for the initiative ledger.
+**Reasoning**: Manual reordering is a common requirement in D&D (e.g., held actions, initiative ties). The previous implementation was a placeholder that didn't sync with the state machine.
+
+**Files Modified**:
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Replaced `reorderEntities` with `setEntitiesOrder` for bulk updates; added turn-index recalculation logic.
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Integrated `Reorder.Group` and `InitiativeItem` component with granular controls.
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Implemented `dragControls` to restrict reordering triggers to the grip handle.
+- [useEncounterState.test.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js): Added test case for turn-index stability during reordering.
+
+**Harness Execution**:
+- Commands Run: `npm run test:harness`
+- Results: 6/6 Tests Passed.
+
+**Tactical Improvements**:
+- Stable Turns: Moving the active entity in the list no longer causes the "active turn" to jump to a different participant.
+- Precise Controls: Dragging is strictly limited to the grip handle, allowing name and HP edits without accidental reorders.
+- Visual Smoothness: List items use spring-based layout transitions during reordering.
+
+**Validation**:
+- Automated: Vitest suite (verified turn index stability).
+- Manual: Browser verified drag handle constraints and active indicator persistence.
+
+**Commit Snapshot**: [Loop 3 Final]

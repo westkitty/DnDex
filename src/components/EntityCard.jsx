@@ -4,7 +4,7 @@ import {
   Flame, Wind, Brain, Users, Trash2, ChevronDown, GripVertical, 
   Eye, EyeOff, Minus, Plus, Settings, ScrollText, Swords, Target
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -16,7 +16,7 @@ function cn(...inputs) {
 }
 
 const EntityCard = ({ 
-  entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing 
+  entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing, dragControls 
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [dmgInput, setDmgInput] = useState('');
@@ -105,7 +105,10 @@ const EntityCard = ({
           "flex items-center gap-4 p-3 md:p-4 border-b md:border-b-0 md:border-r border-white/5 transition-colors duration-500",
           isActive ? "bg-health-base/5" : ""
         )}>
-          <div className="cursor-grab text-dragon-600 hover:text-dragon-300 active:cursor-grabbing">
+          <div 
+            className="cursor-grab text-dragon-600 hover:text-dragon-300 active:cursor-grabbing p-1"
+            onPointerDown={(e) => dragControls.start(e)}
+          >
             <GripVertical className="w-5 h-5" />
           </div>
           

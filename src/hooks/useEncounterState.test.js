@@ -123,4 +123,32 @@ describe('DM Hub State Machine Harness', () => {
 
     expect(result.current.state.entities).toHaveLength(1);
   });
+
+  test('Reordering entities maintains active turn index', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => {
+      result.current.addEntity(true); // Hero A
+      result.current.addEntity(true); // Hero B (Index 1)
+    });
+
+    // Set turn to Hero B
+    act(() => {
+      result.current.advanceTurn(1);
+    });
+    expect(result.current.state.turnIndex).toBe(1);
+
+    // Swap Hero A and Hero B
+    const b = result.current.state.entities[1];
+    const a = result.current.state.entities[0];
+    
+    act(() => {
+      result.current.setEntitiesOrder([b, a]);
+    });
+
+    expect(result.current.state.entities[0].id).toBe(b.id);
+    // turnIndex should update to follow Hero B to Index 0
+    expect(result.current.state.turnIndex).toBe(0);
+  });
 });
