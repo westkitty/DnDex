@@ -49,8 +49,9 @@ export const useEncounterState = () => {
 
       // Add to logs if message provided
       let newLogs = prev.logs || [];
-      if (logMessage) {
-        const messageText = typeof logMessage === 'function' ? logMessage(prev, cleanNew) : logMessage;
+      const messageText = logMessage ? (typeof logMessage === 'function' ? logMessage(prev, cleanNew) : logMessage) : null;
+      
+      if (messageText) {
         newLogs = [{ 
           id: generateId(), 
           message: messageText, 
@@ -60,7 +61,7 @@ export const useEncounterState = () => {
       }
 
       const newHistory = prev.history.slice(0, prev.historyPointer + 1);
-      newHistory.push({ ...cleanNew, logs: newLogs });
+      newHistory.push({ ...cleanNew, logs: newLogs, note: messageText });
       
       const startIdx = Math.max(0, newHistory.length - 50);
       const cappedHistory = newHistory.slice(startIdx);
@@ -78,8 +79,12 @@ export const useEncounterState = () => {
   // --- ACTIONS ---
 
   const undo = useCallback(() => {
+    let note = "";
     setState(prev => {
       if (prev.historyPointer > 0) {
+        // The action being undone is the one that CREATED the current state we are in.
+        // So we look at the current pointer's note.
+        note = prev.history[prev.historyPointer]?.note || "Action";
         const nextPointer = prev.historyPointer - 1;
         return {
           ...prev.history[nextPointer],
@@ -90,11 +95,21 @@ export const useEncounterState = () => {
       }
       return prev;
     });
-  }, []);
+    // This is still slightly risky due to async setState, but since note is 
+    // captured from 'prev' inside the closure, and we return it from the 
+    // outer function... wait.
+    // Actually, in standard React useState, the outer function cannot access 'prev' 
+    // synchronously. I'll change the approach: we'll return the note by peeking 
+    // at the state which should be stable for the current tick.
+    const currentAction = state.history[state.historyPointer];
+    return currentAction?.note || "Action";
+  }, [state.history, state.historyPointer]);
 
   const redo = useCallback(() => {
-    setState(prev => {
-      if (prev.historyPointer < prev.history.length - 1) {
+    if (state.historyPointer < state.history.length - 1) {
+      const redoneAction = state.history[state.historyPointer + 1];
+      const note = redoneAction?.note || "Action";
+      setState(prev => {
         const nextPointer = prev.historyPointer + 1;
         return {
           ...prev.history[nextPointer],
@@ -102,10 +117,11 @@ export const useEncounterState = () => {
           historyPointer: nextPointer,
           isHydrated: true
         };
-      }
-      return prev;
-    });
-  }, []);
+      });
+      return note;
+    }
+    return "";
+  }, [state.history, state.historyPointer]);
 
   const importState = useCallback((imported) => {
     if (!imported.entities) return;
@@ -148,10 +164,18 @@ export const useEncounterState = () => {
   }, [updateState]);
 
   const updateEntity = useCallback((id, updates) => {
-    updateState(prev => ({
-      ...prev,
-      entities: prev.entities.map(e => e.id === id ? { ...e, ...updates } : e)
-    }));
+    updateState(prev => {
+      const entity = prev.entities.find(e => e.id === id);
+      const note = updates.name ? `Renamed ${entity?.name} to ${updates.name}` : updates.hp !== undefined ? `Updated ${entity?.name} HP` : `Updated ${entity?.name}`;
+      return {
+        ...prev,
+        entities: prev.entities.map(e => e.id === id ? { ...e, ...updates } : e)
+      };
+    }, (prev, next) => {
+      const entity = prev.entities.find(e => e.id === id);
+      if (updates.name) return `Renamed ${entity?.name} to ${updates.name}.`;
+      return `Updated ${entity?.name}.`;
+    });
   }, [updateState]);
 
   const removeEntity = useCallback((id) => {
@@ -177,66 +201,73 @@ export const useEncounterState = () => {
   }, [updateState]);
 
   const applyHealing = useCallback((id, amount, toGroup = false) => {
-    const target = state.entities.find(e => e.id === id);
-    const targets = toGroup && target?.groupId 
-      ? state.entities.filter(e => e.groupId === target.groupId)
-      : [target];
+    updateState(prev => {
+      const target = prev.entities.find(e => e.id === id);
+      const targets = toGroup && target?.groupId 
+        ? prev.entities.filter(e => e.groupId === target.groupId)
+        : [target];
 
-    updateState(prev => ({
-      ...prev,
-      entities: prev.entities.map(e => 
-        targets.some(t => t.id === e.id) ? { ...e, hp: Math.min(e.maxHp, e.hp + amount) } : e
-      )
-    }), `${target?.name} ${toGroup ? 'Group' : ''} healed for ${amount} HP.`);
-  }, [updateState, state.entities]);
+      return {
+        ...prev,
+        entities: prev.entities.map(e => 
+          targets.some(t => t.id === e.id) ? { ...e, hp: Math.min(e.maxHp, e.hp + amount) } : e
+        )
+      };
+    }, (prev, next) => {
+      const target = prev.entities.find(e => e.id === id);
+      return `${target?.name} ${toGroup ? 'Group' : ''} healed for ${amount} HP.`;
+    });
+  }, [updateState]);
 
   const applyDamage = useCallback((id, amount, type, toGroup = false) => {
-    const target = state.entities.find(e => e.id === id);
-    const targets = toGroup && target?.groupId 
-      ? state.entities.filter(e => e.groupId === target.groupId)
-      : [target];
+    updateState(prev => {
+      const target = prev.entities.find(e => e.id === id);
+      const targets = toGroup && target?.groupId 
+        ? prev.entities.filter(e => e.groupId === target.groupId)
+        : [target];
 
-    let newAlerts = [...state.alerts];
-    let logs = [];
-    
-    const newEntities = state.entities.map(e => {
-      if (targets.some(t => t?.id === e.id)) {
-        let actualDamage = amount;
-        if (e.immunities.includes(type)) actualDamage = 0;
-        else if (e.vulnerabilities.includes(type)) actualDamage *= 2;
-        else if (e.resistances.includes(type)) actualDamage = Math.floor(actualDamage / 2);
+      let newAlerts = [...prev.alerts];
+      const newEntities = prev.entities.map(e => {
+        if (targets.some(t => t?.id === e.id)) {
+          let actualDamage = amount;
+          if (e.immunities.includes(type)) actualDamage = 0;
+          else if (e.vulnerabilities.includes(type)) actualDamage *= 2;
+          else if (e.resistances.includes(type)) actualDamage = Math.floor(actualDamage / 2);
 
-        let remainingDamage = actualDamage;
-        let newTempHp = e.tempHp;
-        if (newTempHp > 0) {
-          const absorbed = Math.min(newTempHp, remainingDamage);
-          newTempHp -= absorbed;
-          remainingDamage -= absorbed;
+          let remainingDamage = actualDamage;
+          let newTempHp = e.tempHp;
+          if (newTempHp > 0) {
+            const absorbed = Math.min(newTempHp, remainingDamage);
+            newTempHp -= absorbed;
+            remainingDamage -= absorbed;
+          }
+
+          const newHp = Math.max(0, e.hp - remainingDamage);
+
+          if (actualDamage > 0 && e.concentration) {
+            const dc = Math.max(10, Math.floor(actualDamage / 2));
+            newAlerts.push({
+              id: generateId(),
+              message: `${e.name} must make a DC ${dc} Concentration save!`,
+              type: 'warning'
+            });
+          }
+
+          return { ...e, hp: newHp, tempHp: newTempHp };
         }
+        return e;
+      });
 
-        const newHp = Math.max(0, e.hp - remainingDamage);
-
-        if (actualDamage > 0 && e.concentration) {
-          const dc = Math.max(10, Math.floor(actualDamage / 2));
-          newAlerts.push({
-            id: generateId(),
-            message: `${e.name} must make a DC ${dc} Concentration save!`,
-            type: 'warning'
-          });
-        }
-
-        logs.push(`${e.name} took ${actualDamage} ${type} damage.`);
-        return { ...e, hp: newHp, tempHp: newTempHp };
-      }
-      return e;
+      return {
+        ...prev,
+        entities: newEntities,
+        alerts: newAlerts.slice(0, 5)
+      };
+    }, (prev, next) => {
+      const target = prev.entities.find(e => e.id === id);
+      return `${target?.name} ${toGroup ? 'Group' : ''} took ${amount} ${type} damage.`;
     });
-
-    updateState(prev => ({
-      ...prev,
-      entities: newEntities,
-      alerts: newAlerts.slice(0, 5)
-    }), logs.join(' '));
-  }, [updateState, state.entities, state.alerts]);
+  }, [updateState]);
 
   const advanceTurn = useCallback((direction = 1) => {
     updateState(prev => {
@@ -308,7 +339,7 @@ export const useEncounterState = () => {
         entities: newOrder,
         turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
       };
-    });
+    }, "Initiative order adjusted.");
   }, [updateState]);
   return {
     state,

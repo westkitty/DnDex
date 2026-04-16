@@ -23,7 +23,10 @@ const EntityCard = ({
   const [dmgType, setDmgType] = useState('Slashing');
   const [useGroup, setUseGroup] = useState(false);
 
-  const hpPercent = (entity.hp / entity.maxHp) * 100;
+  // Defensive Guard
+  if (!entity || !entity.id) return null;
+
+  const hpPercent = entity.maxHp > 0 ? (entity.hp / entity.maxHp) * 100 : 0;
   const isBloodied = entity.hp <= entity.maxHp / 2;
   const isDead = entity.hp <= 0;
 
@@ -37,7 +40,7 @@ const EntityCard = ({
       return () => clearTimeout(timer);
     }
     prevHpRef.current = entity.hp;
-  }, [entity.hp]);
+  }, [entity?.hp]);
 
   const handleApplyDamage = (e) => {
     e.stopPropagation();

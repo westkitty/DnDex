@@ -151,4 +151,28 @@ describe('DM Hub State Machine Harness', () => {
     // turnIndex should update to follow Hero B to Index 0
     expect(result.current.state.turnIndex).toBe(0);
   });
+
+  test('Undoing damage correctly reverts HP and history', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => {
+      result.current.addEntity(false); // Add Monster (HP 10)
+    });
+
+    const id = result.current.state.entities[0].id;
+
+    act(() => {
+      result.current.applyDamage(id, 5, 'Slashing');
+    });
+
+    expect(result.current.state.entities[0].hp).toBe(5);
+
+    act(() => {
+      result.current.undo();
+    });
+
+    expect(result.current.state.entities[0].hp).toBe(10);
+    expect(result.current.state.historyPointer).toBe(0); // Back to 'Add Monster' state
+  });
 });

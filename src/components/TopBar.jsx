@@ -1,12 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { 
   ChevronRight, ChevronLeft, Undo, Redo, Book, UserPlus, Ghost, 
-  Settings, Download, Upload, Shield, Swords, AlertCircle, X, FileUp
+  Settings, Download, Shield, Swords, AlertCircle, X, FileUp
 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useToast } from './ToastProvider';
 
 const TopBar = ({ encounter, toggleRules }) => {
   const { state, advanceTurn, undo, redo, canUndo, canRedo, addEntity, importState } = encounter;
+  const { showToast } = useToast();
   const [showExport, setShowExport] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -104,11 +106,25 @@ const TopBar = ({ encounter, toggleRules }) => {
         )}
 
         <div className="flex glass rounded-lg overflow-hidden border-white/5 p-1">
-          <button onClick={undo} disabled={!canUndo} className="p-2 hover:bg-white/5 disabled:opacity-20 transition-colors">
+          <button 
+            onClick={() => {
+              const note = undo();
+              if (note) showToast(`Undone: ${note}`, 'history');
+            }} 
+            disabled={!canUndo} 
+            className="p-2 hover:bg-white/5 disabled:opacity-20 transition-colors"
+          >
             <Undo className="w-4 h-4" />
           </button>
           <div className="w-px bg-white/5" />
-          <button onClick={redo} disabled={!canRedo} className="p-2 hover:bg-white/5 disabled:opacity-20 transition-colors">
+          <button 
+            onClick={() => {
+              const note = redo();
+              if (note) showToast(`Redone: ${note}`, 'history');
+            }} 
+            disabled={!canRedo} 
+            className="p-2 hover:bg-white/5 disabled:opacity-20 transition-colors"
+          >
             <Redo className="w-4 h-4" />
           </button>
         </div>

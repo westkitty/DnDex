@@ -4,13 +4,15 @@ import MainDisplay from './components/MainDisplay';
 import TopBar from './components/TopBar';
 import RulesPanel from './components/RulesPanel';
 import { AnimatePresence } from 'framer-motion';
+import { ToastProvider } from './components/ToastProvider';
 
 function App() {
   const encounter = useEncounterState();
   const [isRulesOpen, setIsRulesOpen] = useState(false);
 
   return (
-    <div className="flex flex-col h-screen bg-dragon-950 text-dragon-100 selection:bg-indigo-500/30">
+    <ToastProvider>
+      <div className="flex flex-col h-screen bg-dragon-950 text-dragon-100 selection:bg-indigo-500/30">
       <TopBar encounter={encounter} toggleRules={() => setIsRulesOpen(!isRulesOpen)} />
       
       <div className="flex flex-1 overflow-hidden relative">
@@ -31,6 +33,7 @@ function App() {
         </div>
       </div>
     </div>
+    </ToastProvider>
   );
 }
 

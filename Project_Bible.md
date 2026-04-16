@@ -136,3 +136,30 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser verified drag handle constraints and active indicator persistence.
 
 **Commit Snapshot**: [Loop 3 Final]
+
+## [2026-04-16] Loop 4: Undo/Redo Visual Feedback & Stabilization
+**Objective**: Provide tactile feedback for history operations and resolve critical stability regressions.
+**Reasoning**: Undo/Redo actions were previously silent and prone to crashing the UI when entities were removed while animations were still active.
+
+**Files Modified**:
+- [ToastProvider.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/ToastProvider.jsx): [NEW] Framework for tactical notifications.
+- [App.jsx](file:///Users/andrew/Projects/DM_Hub/src/App.jsx): Integrated notification context.
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Refactored history stack to store action notes; converted all updaters to functional form for race-condition protection.
+- [TopBar.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx): Connected history actions to the Toast system.
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Added defensive guards for state-sync stability.
+- [useEncounterState.test.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js): Added history-sync verification for damage actions.
+
+**Harness Execution**:
+- Commands Run: `npm run test:harness`
+- Results: 7/7 Tests Passed.
+
+**Stabilization Results**:
+- Error Resilience: Zero "black screen" crashes during rapid undo/redo cycles.
+- History Integrity: Every action (Damage, Healing, Renaming, Reordering) now generates a persistent history entry with a descriptive toast.
+- UI Polish: High-fidelity toasts with blurred backgrounds and semantic icons.
+
+**Validation**:
+- Automated: Vitest history integrity suite.
+- Manual: Browser verified toast accuracy and application robustness.
+
+**Commit Snapshot**: [Loop 4 Final]
