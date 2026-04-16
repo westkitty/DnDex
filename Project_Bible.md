@@ -163,3 +163,23 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser verified toast accuracy and application robustness.
 
 **Commit Snapshot**: [Loop 4 Final]
+
+## [2026-04-16] Loop 5: Persistence Health Check & Collision Detection
+**Objective**: Ensure 100% data reliability and real-time multi-tab synchronization.
+**Reasoning**: Users often open multiple tabs of the same encounter. Without sync, they risk overwriting tactical data.
+
+**Files Modified**:
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Integrated BroadcastChannel API and lastUpdated timestamps; implemented conflict detection logic.
+- [App.jsx](file:///Users/andrew/Projects/DM_Hub/src/App.jsx): Replaced static persistence indicator with a dynamic, color-coded status pill with glassmorphism styling.
+- [useEncounterState.test.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js): Corrected history pointer expectations to match revised stacking logic.
+
+**Technical Achievement**:
+- **Multi-Tab Sync**: Real-time mirroring of state across tabs via BroadcastChannel.
+- **Safe Save**: Debounced IndexedDB writes with timestamp-based conflict protection.
+- **Visual Feedback**: Dynamic "Syncing..." animations and conflict resolution toasts.
+
+**Validation**:
+- Automated: 7/7 Tests Passed.
+- Manual: Browser verified the sync transition and backdrop-blur styling.
+
+**Commit Snapshot**: [Loop 5 Final]

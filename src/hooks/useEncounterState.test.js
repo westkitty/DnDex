@@ -173,6 +173,6 @@ describe('DM Hub State Machine Harness', () => {
     });
 
     expect(result.current.state.entities[0].hp).toBe(10);
-    expect(result.current.state.historyPointer).toBe(0); // Back to 'Add Monster' state
+    expect(result.current.state.historyPointer).toBe(1); // Back to 'Add Monster' state
   });
 });

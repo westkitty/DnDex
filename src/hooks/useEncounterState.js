@@ -14,10 +14,30 @@ const INITIAL_STATE = {
   logs: [], // Chronological audit trail
   history: [], 
   historyPointer: -1,
+  lastUpdated: Date.now(),
 };
+
+const SYNC_CHANNEL = "dm-hub-sync";
 
 export const useEncounterState = () => {
   const [state, setState] = useState(() => ({ ...INITIAL_STATE, isHydrated: false }));
+  const [syncStatus, setSyncStatus] = useState('saved'); // 'saved', 'saving', 'conflict'
+
+  // Broadcast Channel for multi-tab sync
+  useEffect(() => {
+    const channel = new BroadcastChannel(SYNC_CHANNEL);
+    channel.onmessage = (event) => {
+      const remoteState = event.data;
+      setState(prev => {
+        if (remoteState.lastUpdated > prev.lastUpdated) {
+          // Sync history and logs as well
+          return { ...remoteState, isHydrated: true };
+        }
+        return prev;
+      });
+    };
+    return () => channel.close();
+  }, []);
 
   // Hydrate from IndexedDB on mount
   useEffect(() => {
@@ -30,20 +50,46 @@ export const useEncounterState = () => {
     });
   }, []);
 
-  // Persistence to IndexedDB
+  // Persistence to IndexedDB with collision detection
   useEffect(() => {
     if (!state.isHydrated) return;
-    const { history: _, historyPointer: __, isHydrated: ___, ...toSave } = state;
-    set('dm-hub-state', toSave);
+    
+    const saveState = async () => {
+      setSyncStatus('saving');
+      try {
+        const diskState = await get('dm-hub-state');
+        if (diskState && diskState.lastUpdated > state.lastUpdated) {
+          setSyncStatus('conflict');
+          return;
+        }
+
+        const { history: _, historyPointer: __, isHydrated: ___, ...toSave } = state;
+        await set('dm-hub-state', toSave);
+        
+        // Broadcast to other tabs
+        const channel = new BroadcastChannel(SYNC_CHANNEL);
+        channel.postMessage({ ...toSave, isHydrated: true });
+        channel.close();
+        
+        setSyncStatus('saved');
+      } catch (err) {
+        console.error("Save failed:", err);
+        setSyncStatus('error');
+      }
+    };
+
+    const timer = setTimeout(saveState, 500); // Debounce saves
+    return () => clearTimeout(timer);
   }, [state]);
 
   // Core update function with history tracking and logging
   const updateState = useCallback((updater, logMessage = null) => {
     setState(prev => {
       const newState = typeof updater === 'function' ? updater(prev) : updater;
+      const now = Date.now();
       
-      const { history: _, historyPointer: __, isHydrated: ___, logs: ____, ...cleanNew } = newState;
-      const { history: _h, historyPointer: _p, isHydrated: _hy, logs: _l, ...cleanPrev } = prev;
+      const { history: _, historyPointer: __, isHydrated: ___, logs: ____, lastUpdated: _____, ...cleanNew } = newState;
+      const { history: _h, historyPointer: _p, isHydrated: _hy, logs: _l, lastUpdated: _lu, ...cleanPrev } = prev;
       
       if (JSON.stringify(cleanNew) === JSON.stringify(cleanPrev)) return prev;
 
@@ -61,14 +107,14 @@ export const useEncounterState = () => {
       }
 
       const newHistory = prev.history.slice(0, prev.historyPointer + 1);
-      newHistory.push({ ...cleanNew, logs: newLogs, note: messageText });
+      const stateWithMeta = { ...cleanNew, logs: newLogs, lastUpdated: now };
+      newHistory.push({ ...stateWithMeta, note: messageText });
       
       const startIdx = Math.max(0, newHistory.length - 50);
       const cappedHistory = newHistory.slice(startIdx);
       
       return {
-        ...cleanNew,
-        logs: newLogs,
+        ...stateWithMeta,
         history: cappedHistory,
         historyPointer: cappedHistory.length - 1,
         isHydrated: true
@@ -355,6 +401,7 @@ export const useEncounterState = () => {
     importState,
     undo,
     redo,
+    syncStatus,
     canUndo: state.historyPointer > 0,
     canRedo: state.historyPointer < state.history.length - 1,
   };
