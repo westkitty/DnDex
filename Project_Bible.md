@@ -241,3 +241,22 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser verified replenishment logic and visual fidelity.
 
 **Commit Snapshot**: [Loop 8 Final]
+
+## [2026-04-16] Loop 9: Semantic Iconography for Actions
+**Objective**: Transform the Action Ledger into a rich, metadata-driven audit trail.
+**Reasoning**: Plain text logs are slow to read in high-pressure combat situations. Semantic icons and colors allow DMs to interpret the flow of battle via peripheral vision.
+
+**Files Modified**:
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Updated logging pipeline to support the `subType` metadata field.
+- [ActionLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/ActionLedger.jsx): Implemented a semantic mapping engine for icons (Fire, Psychic, Force, etc.) and color configurations.
+
+**Visual Enhancements**:
+- **Atomic Badges**: Each log entry now features a metadata tag (e.g., 'FIRE', 'LEGENDARY').
+- **Damage Symbolism**: Icons like Flame, Brain, and Snowflake provide instant context for damage types.
+- **Tactical Colors**: Crimson backgrounds for damage, emerald for healing, and indigo for legendary actions.
+
+**Validation**:
+- Automated: 8/8 Tests Passed.
+- Manual: Browser verified rich visual feedback for multiple damage types and resource expenditures.
+
+**Commit Snapshot**: [Loop 9 Final]

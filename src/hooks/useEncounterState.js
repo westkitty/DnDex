@@ -83,7 +83,7 @@ export const useEncounterState = () => {
   }, [state]);
 
   // Core update function with history tracking and logging
-  const updateState = useCallback((updater, logMessage = null) => {
+  const updateState = useCallback((updater, logMessage = null, subType = null) => {
     setState(prev => {
       const newState = typeof updater === 'function' ? updater(prev) : updater;
       const now = Date.now();
@@ -102,7 +102,8 @@ export const useEncounterState = () => {
           id: generateId(), 
           message: messageText, 
           timestamp: new Date().toLocaleTimeString(),
-          type: messageText.includes('damage') ? 'damage' : messageText.includes('heal') ? 'heal' : 'info'
+          type: messageText.includes('damage') ? 'damage' : messageText.includes('heal') ? 'heal' : 'info',
+          subType: subType // For rich iconography
         }, ...newLogs].slice(0, 100); // Keep last 100 logs
       }
 
@@ -236,7 +237,7 @@ export const useEncounterState = () => {
     }, (prev) => {
       const entity = prev.entities.find(e => e.id === id);
       return `${entity?.name} spent a Legendary Action.`;
-    });
+    }, 'legendary');
   }, [updateState]);
 
   const spendLegendaryResistance = useCallback((id) => {
@@ -250,7 +251,7 @@ export const useEncounterState = () => {
     }, (prev) => {
       const entity = prev.entities.find(e => e.id === id);
       return `${entity?.name} spent a Legendary Resistance!`;
-    });
+    }, 'resistance');
   }, [updateState]);
 
   const removeEntity = useCallback((id) => {
@@ -291,7 +292,7 @@ export const useEncounterState = () => {
     }, (prev, next) => {
       const target = prev.entities.find(e => e.id === id);
       return `${target?.name} ${toGroup ? 'Group' : ''} healed for ${amount} HP.`;
-    });
+    }, 'heal');
   }, [updateState]);
 
   const applyDamage = useCallback((id, amount, type, toGroup = false) => {
@@ -343,7 +344,7 @@ export const useEncounterState = () => {
     }, (prev, next) => {
       const target = prev.entities.find(e => e.id === id);
       return `${target?.name} ${toGroup ? 'Group' : ''} took ${amount} ${type} damage.`;
-    });
+    }, type);
   }, [updateState]);
 
   const resolveConcentration = useCallback((alertId, success) => {
@@ -369,12 +370,23 @@ export const useEncounterState = () => {
       const entity = prev.entities.find(e => e.id === alert.entityId);
       const note = success ? `${entity?.name} maintained concentration.` : `${entity?.name} lost concentration!`;
       
+      const logEntry = {
+        id: generateId(),
+        message: note,
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'info',
+        subType: 'concentration'
+      };
+
       // We manually update history here since we aren't using updateState
       const newHistory = prev.history.slice(0, prev.historyPointer + 1);
-      newHistory.push({ ...newState, note: note });
+      const newLogs = [logEntry, ...(prev.logs || [])].slice(0, 50);
+      
+      const finalState = { ...newState, logs: newLogs };
+      newHistory.push({ ...finalState, note: note });
 
       return {
-        ...newState,
+        ...finalState,
         history: newHistory,
         historyPointer: newHistory.length - 1
       };
