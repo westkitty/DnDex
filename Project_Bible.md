@@ -221,3 +221,23 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Manual: Browser verified end-to-end automation and stability.
 
 **Commit Snapshot**: [Loop 7 Final]
+
+## [2026-04-16] Loop 8: Lair & Legendary Action Refinement
+**Objective**: Enhance high-level encounter management with dedicated resource tracking.
+**Reasoning**: Legendary and Lair actions are central to high-stakes D&D combat but easy to forget. Automated replenishment and visual threshold markers reduce DM cognitive load.
+
+**Files Modified**:
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Expanded schema with legendaryResistances; implemented automated turn-based replenishment.
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Added spatial 'Lair Action (20)' threshold marker.
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Implemented 'Legendary Hub' and configuration inputs.
+
+**Feature Highlights**:
+- **Lair Marker**: Persistent visual banner at Initiative 20.
+- **Legendary Hub**: Interactive 'dots' for Actions and 'diamonds' for Resistances.
+- **Auto-Reset**: Actions automatically refill when the creature's turn begins.
+
+**Validation**:
+- Automated: 8/8 Tests Passed.
+- Manual: Browser verified replenishment logic and visual fidelity.
+
+**Commit Snapshot**: [Loop 8 Final]

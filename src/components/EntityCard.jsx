@@ -17,7 +17,7 @@ function cn(...inputs) {
 
 const EntityCard = ({ 
   entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing, 
-  resolveConcentration, alerts, dragControls 
+  resolveConcentration, spendLegendaryAction, spendLegendaryResistance, alerts, dragControls 
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [dmgInput, setDmgInput] = useState('');
@@ -223,6 +223,50 @@ const EntityCard = ({
                     <Users className="w-3 h-3" /> {entity.groupId}
                   </span>
                 )}
+                
+                {/* Legendary Hub */}
+                {(entity.legendaryActionsMax > 0 || entity.legendaryResistancesMax > 0) && (
+                  <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-dragon-900/80 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
+                    {entity.legendaryActionsMax > 0 && (
+                      <div className="flex items-center gap-1.5 border-r border-white/10 pr-2">
+                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Leg Actions</span>
+                        <div className="flex gap-1">
+                          {Array.from({ length: entity.legendaryActionsMax }).map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => i < entity.legendaryActions && spendLegendaryAction(entity.id)}
+                              className={cn(
+                                "w-2.5 h-2.5 rounded-full border transition-all duration-300",
+                                i < entity.legendaryActions 
+                                  ? "bg-indigo-400 border-indigo-300 shadow-[0_0_5px_rgba(129,140,248,0.5)]" 
+                                  : "bg-dragon-950 border-white/10 opacity-30"
+                              )}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {entity.legendaryResistancesMax > 0 && (
+                      <div className="flex items-center gap-1.5 pl-1">
+                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-tighter">Resists</span>
+                        <div className="flex gap-1">
+                          {Array.from({ length: entity.legendaryResistancesMax }).map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => i < entity.legendaryResistances && spendLegendaryResistance(entity.id)}
+                              className={cn(
+                                "w-2.5 h-2.5 rounded-md border rotate-45 transition-all duration-300",
+                                i < entity.legendaryResistances 
+                                  ? "bg-rose-500 border-rose-400 shadow-[0_0_5px_rgba(244,63,94,0.5)]" 
+                                  : "bg-dragon-950 border-white/10 opacity-30"
+                              )}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {entity.conditions.map(c => (
                   <span key={c} className="px-2.5 py-1 rounded-lg bg-dragon-800 border-white/10 border text-dragon-200 text-[10px] font-black uppercase tracking-wider">
                     {c}
@@ -400,6 +444,41 @@ const EntityCard = ({
                        </span>
                      ))}
                    </div>
+                </div>
+              </div>
+
+              {/* High-Level Resources */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-bold text-dragon-500 uppercase tracking-[0.2em] mb-3">Legendary Resources</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold text-dragon-600 uppercase">Action Points (Max)</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number"
+                        value={entity.legendaryActionsMax || 0}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          updateEntity({ legendaryActionsMax: val, legendaryActions: val });
+                        }}
+                        className="w-full glass text-xs p-2 rounded-lg outline-none text-center font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold text-dragon-600 uppercase">Resistances (Max)</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number"
+                        value={entity.legendaryResistancesMax || 0}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          updateEntity({ legendaryResistancesMax: val, legendaryResistances: val });
+                        }}
+                        className="w-full glass text-xs p-2 rounded-lg outline-none text-center font-mono"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

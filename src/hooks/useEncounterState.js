@@ -200,7 +200,9 @@ export const useEncounterState = () => {
       vulnerabilities: [],
       hidden: false,
       legendaryActions: 0,
-      maxLegendaryActions: 0,
+      legendaryActionsMax: 0,
+      legendaryResistances: 0,
+      legendaryResistancesMax: 0,
     };
 
     updateState(prev => ({
@@ -212,7 +214,6 @@ export const useEncounterState = () => {
   const updateEntity = useCallback((id, updates) => {
     updateState(prev => {
       const entity = prev.entities.find(e => e.id === id);
-      const note = updates.name ? `Renamed ${entity?.name} to ${updates.name}` : updates.hp !== undefined ? `Updated ${entity?.name} HP` : `Updated ${entity?.name}`;
       return {
         ...prev,
         entities: prev.entities.map(e => e.id === id ? { ...e, ...updates } : e)
@@ -221,6 +222,34 @@ export const useEncounterState = () => {
       const entity = prev.entities.find(e => e.id === id);
       if (updates.name) return `Renamed ${entity?.name} to ${updates.name}.`;
       return `Updated ${entity?.name}.`;
+    });
+  }, [updateState]);
+
+  const spendLegendaryAction = useCallback((id) => {
+    updateState(prev => {
+      const entity = prev.entities.find(e => e.id === id);
+      if (!entity || entity.legendaryActions <= 0) return prev;
+      return {
+        ...prev,
+        entities: prev.entities.map(e => e.id === id ? { ...e, legendaryActions: e.legendaryActions - 1 } : e)
+      };
+    }, (prev) => {
+      const entity = prev.entities.find(e => e.id === id);
+      return `${entity?.name} spent a Legendary Action.`;
+    });
+  }, [updateState]);
+
+  const spendLegendaryResistance = useCallback((id) => {
+    updateState(prev => {
+      const entity = prev.entities.find(e => e.id === id);
+      if (!entity || entity.legendaryResistances <= 0) return prev;
+      return {
+        ...prev,
+        entities: prev.entities.map(e => e.id === id ? { ...e, legendaryResistances: e.legendaryResistances - 1 } : e)
+      };
+    }, (prev) => {
+      const entity = prev.entities.find(e => e.id === id);
+      return `${entity?.name} spent a Legendary Resistance!`;
     });
   }, [updateState]);
 
@@ -379,8 +408,8 @@ export const useEncounterState = () => {
         if (e.id === nextActive?.id && direction === 1) {
           effects = effects.map(ef => ef.tickOn === 'start' ? { ...ef, duration: ef.duration - 1 } : ef);
           
-          if (!e.isPlayer && e.maxLegendaryActions > 0) {
-            return { ...e, effects: effects.filter(ef => ef.duration > 0), legendaryActions: e.maxLegendaryActions };
+          if (!e.isPlayer && e.legendaryActionsMax > 0) {
+            return { ...e, effects: effects.filter(ef => ef.duration > 0), legendaryActions: e.legendaryActionsMax };
           }
         }
         return { ...e, effects: effects.filter(ef => ef.duration > 0) };
@@ -440,6 +469,8 @@ export const useEncounterState = () => {
     redo,
     syncStatus,
     resolveConcentration,
+    spendLegendaryAction,
+    spendLegendaryResistance,
     canUndo: state.historyPointer > 0,
     canRedo: state.historyPointer < state.history.length - 1,
   };

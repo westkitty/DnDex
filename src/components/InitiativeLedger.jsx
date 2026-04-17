@@ -1,11 +1,12 @@
 import React from 'react';
-import { Reorder, AnimatePresence, useDragControls } from 'framer-motion';
+import { Reorder, AnimatePresence, useDragControls, motion } from 'framer-motion';
 import EntityCard from './EntityCard';
 import { Flag, Zap } from 'lucide-react';
 
 const InitiativeItem = ({ 
   entity, index, turnIndex, entities, updateEntity, removeEntity, 
-  applyDamage, applyHealing, resolveConcentration, alerts 
+  applyDamage, applyHealing, resolveConcentration, alerts,
+  spendLegendaryAction, spendLegendaryResistance
 }) => {
   const dragControls = useDragControls();
 
@@ -40,7 +41,8 @@ const InitiativeItem = ({
 const InitiativeLedger = ({ encounter }) => {
   const { 
     state, setEntitiesOrder, updateEntity, removeEntity, 
-    applyDamage, applyHealing, resolveConcentration 
+    applyDamage, applyHealing, resolveConcentration,
+    spendLegendaryAction, spendLegendaryResistance
   } = encounter;
   const { entities, turnIndex, alerts } = state;
 
@@ -63,21 +65,41 @@ const InitiativeLedger = ({ encounter }) => {
         className="space-y-3"
       >
         <AnimatePresence initial={false}>
-          {entities.map((entity, index) => (
-            <InitiativeItem
-              key={entity.id}
-              entity={entity}
-              index={index}
-              turnIndex={turnIndex}
-              entities={entities}
-              updateEntity={(updates) => updateEntity(entity.id, updates)}
-              removeEntity={() => removeEntity(entity.id)}
-              applyDamage={(amt, type, group) => applyDamage(entity.id, amt, type, group)}
-              applyHealing={(amt, group) => applyHealing(entity.id, amt, group)}
-              resolveConcentration={resolveConcentration}
-              alerts={alerts}
-            />
-          ))}
+          {entities.map((entity, index) => {
+            const showLairActionMarker = index === 0 && entity.initiative < 20 || (index > 0 && entities[index-1].initiative >= 20 && entity.initiative < 20);
+            
+            return (
+              <React.Fragment key={entity.id}>
+                {showLairActionMarker && (
+                  <motion.div 
+                    initial={{ opacity: 0, scaleY: 0 }}
+                    animate={{ opacity: 1, scaleY: 1 }}
+                    className="flex items-center gap-3 py-1 px-4 border-l-2 border-rose-500/50 bg-rose-500/5"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-rose-300 uppercase tracking-widest">
+                      Lair Actions (Initiative 20)
+                    </span>
+                    <div className="flex-1 h-px bg-rose-500/20" />
+                  </motion.div>
+                )}
+                <InitiativeItem
+                  entity={entity}
+                  index={index}
+                  turnIndex={turnIndex}
+                  entities={entities}
+                  updateEntity={(updates) => updateEntity(entity.id, updates)}
+                  removeEntity={() => removeEntity(entity.id)}
+                  applyDamage={(amt, type, group) => applyDamage(entity.id, amt, type, group)}
+                  applyHealing={(amt, group) => applyHealing(entity.id, amt, group)}
+                  resolveConcentration={resolveConcentration}
+                  spendLegendaryAction={spendLegendaryAction}
+                  spendLegendaryResistance={spendLegendaryResistance}
+                  alerts={alerts}
+                />
+              </React.Fragment>
+            );
+          })}
         </AnimatePresence>
       </Reorder.Group>
 
