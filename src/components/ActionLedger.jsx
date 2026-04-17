@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Swords, Heart, Info, Clock, Trash2, ArrowRight, 
   Flame, Snowflake, Zap, Biohazard, Droplets, Ghost, 
-  Sparkle, Brain, Target, ShieldAlert, Sun, Skull, Wind,
+  Sparkle, Brain, Target, ShieldAlert, Sun, Skull, CloudLightning,
   Shield, ZapOff, Users
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -28,7 +28,7 @@ const getIconConfig = (log) => {
   if (subType === 'fire') return { icon: <Flame className="w-4 h-4" />, color: 'text-orange-400', bg: 'bg-orange-500/10' };
   if (subType === 'cold') return { icon: <Snowflake className="w-4 h-4" />, color: 'text-blue-300', bg: 'bg-blue-500/10' };
   if (subType === 'lightning') return { icon: <Zap className="w-4 h-4" />, color: 'text-yellow-300', bg: 'bg-yellow-500/10' };
-  if (subType === 'thunder') return { icon: <Wind className="w-4 h-4" />, color: 'text-cyan-300', bg: 'bg-cyan-500/10' };
+  if (subType === 'thunder') return { icon: <CloudLightning className="w-4 h-4" />, color: 'text-cyan-300', bg: 'bg-cyan-500/10' };
   if (subType === 'poison') return { icon: <Biohazard className="w-4 h-4" />, color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
   if (subType === 'acid') return { icon: <Droplets className="w-4 h-4" />, color: 'text-lime-400', bg: 'bg-lime-500/10' };
   if (subType === 'necrotic') return { icon: <Skull className="w-4 h-4" />, color: 'text-purple-400', bg: 'bg-purple-500/10' };
