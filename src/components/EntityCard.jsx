@@ -24,7 +24,6 @@ const EntityCard = ({
   const [dmgType, setDmgType] = useState('Slashing');
   const [useGroup, setUseGroup] = useState(false);
 
-  // Defensive Guard
   if (!entity || !entity.id) return null;
 
   const hpPercent = entity.maxHp > 0 ? (entity.hp / entity.maxHp) * 100 : 0;
@@ -57,322 +56,163 @@ const EntityCard = ({
     setDmgInput('');
   };
 
-  const toggleCondition = (cond) => {
-    const next = entity.conditions.includes(cond)
-      ? entity.conditions.filter(c => c !== cond)
-      : [...entity.conditions, cond];
-    updateEntity({ conditions: next });
-  };
-
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ 
         opacity: 1, 
-        y: 0,
-        x: showDamageFlash ? [0, -4, 4, -4, 4, 0] : 0
+        scale: 1,
+        x: showDamageFlash ? [0, -2, 2, -2, 2, 0] : 0,
+        boxShadow: isActive ? "var(--shadow-glow-ether)" : "none"
       }}
       className={cn(
-        "group relative flex flex-col rounded-2xl glass transition-all duration-500 overflow-hidden",
-        isActive ? "ring-2 ring-health-base bg-dragon-800/90 shadow-[0_0_20px_rgba(16,185,129,0.15)]" : "hover:bg-dragon-900/60",
-        isUpcoming && !isActive && "ring-1 ring-white/10 opacity-90",
-        isDead && "grayscale-[0.8] opacity-50 contrast-75",
-        isBloodied && !isDead && "shadow-[inset_0_0_20px_rgba(244,63,94,0.1)] border-rose-500/20"
+        "group relative flex flex-col rounded-2xl transition-all duration-500 overflow-hidden",
+        "bg-[var(--color-obsidian-800)]/80 border border-white/5",
+        isActive ? "ring-2 ring-indigo-500/50 bg-[var(--color-obsidian-700)]/90" : "hover:bg-[var(--color-obsidian-700)]/50",
+        isDead && "opacity-60 grayscale-[0.5]",
+        isBloodied && !isDead && "border-rose-500/20"
       )}
     >
-      {/* Visual Feedback Overlays */}
-      <AnimatePresence>
-        {showDamageFlash && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.4, 0] }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-rose-500/20 pointer-events-none z-20"
-          />
-        )}
-      </AnimatePresence>
+      {/* Active Turn Pulse */}
+      {isActive && (
+        <motion.div 
+          animate={{ opacity: [0.1, 0.2, 0.1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute inset-0 bg-indigo-500/10 pointer-events-none"
+        />
+      )}
 
-      {/* Active Marker */}
-      <AnimatePresence>
-        {isActive && (
-          <motion.div 
-            initial={{ width: 0 }} animate={{ width: 6 }}
-            className="absolute left-0 top-0 bottom-0 bg-health-base z-30 shadow-[2px_0_10px_rgba(16,185,129,0.5)]"
-          />
-        )}
-      </AnimatePresence>
-
-      <div className="flex flex-col md:flex-row items-stretch">
-        {/* Left: Drag Handle & Initiative */}
+      <div className="flex flex-col md:flex-row items-stretch min-h-[100px]">
+        {/* Initiative Tab */}
         <div className={cn(
-          "flex items-center gap-4 p-3 md:p-4 border-b md:border-b-0 md:border-r border-white/5 transition-colors duration-500",
-          isActive ? "bg-health-base/5" : ""
+          "flex flex-col items-center justify-center gap-2 p-4 border-r border-white/5",
+          isActive ? "bg-indigo-500/10" : "bg-black/20"
         )}>
           <div 
-            className="cursor-grab text-dragon-600 hover:text-dragon-300 active:cursor-grabbing p-1"
+            className="cursor-grab text-slate-600 hover:text-indigo-400 active:cursor-grabbing p-1 transition-colors"
             onPointerDown={(e) => dragControls.start(e)}
           >
-            <GripVertical className="w-5 h-5" />
+            <GripVertical className="w-4 h-4" />
           </div>
-          
-          <div className="flex flex-col items-center">
-            <div className="relative group/init">
-              <input 
-                type="number"
-                value={entity.initiative}
-                onChange={(e) => updateEntity({ initiative: parseInt(e.target.value) || 0 })}
-                className="w-12 h-10 glass bg-dragon-950/50 rounded-lg text-center font-mono font-black text-xl text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-              />
-              <div className="absolute -inset-1 rounded-lg bg-indigo-500 opacity-0 group-hover/init:opacity-5 blur-sm transition-opacity" />
-            </div>
-            <span className="text-[9px] font-black text-dragon-500 uppercase tracking-widest mt-1">Init</span>
+          <div className="relative">
+            <input 
+              type="number"
+              value={entity.initiative}
+              onChange={(e) => updateEntity({ initiative: parseInt(e.target.value) || 0 })}
+              className="w-10 h-10 glass-dark rounded-xl text-center font-mono font-bold text-lg text-indigo-400 outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all"
+            />
           </div>
         </div>
 
-        {/* Center: Info Area */}
-        <div className="flex-1 flex flex-col md:flex-row items-center gap-6 p-3 md:p-4">
-          <div className="flex-1 min-w-0 w-full relative">
-            <div className="flex items-center gap-2 mb-1.5">
+        {/* Main Body */}
+        <div className="flex-1 flex flex-col p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
               <input 
                 value={entity.name}
                 onChange={(e) => updateEntity({ name: e.target.value })}
                 className={cn(
-                  "bg-transparent font-serif font-bold text-2xl outline-none focus:border-b-2 border-indigo-500/50 truncate w-full transition-all",
-                  entity.isPlayer ? "text-indigo-200" : "text-rose-200"
+                  "bg-transparent font-serif font-bold text-xl outline-none border-b border-transparent focus:border-indigo-500/30 transition-all",
+                  entity.isPlayer ? "text-indigo-100" : "text-rose-100"
                 )}
               />
               <button 
                 onClick={() => updateEntity({ hidden: !entity.hidden })}
                 className={cn(
-                  "p-1.5 rounded-lg transition-all",
-                  entity.hidden ? "text-dragon-500 bg-white/5" : "text-dragon-400 hover:text-white"
+                  "p-1 rounded-lg transition-colors",
+                  entity.hidden ? "text-amber-500 bg-amber-500/10" : "text-slate-500 hover:text-slate-200"
                 )}
-                title="Visibility Toggle"
               >
-                {entity.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {entity.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
-            
-            <div className="flex flex-wrap gap-3 items-center">
-              <div className="flex items-center glass-dark px-2 py-1 rounded-lg border border-white/5 gap-3">
-                <div className="flex items-center gap-1.5 group/stat">
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 px-3 py-1.5 glass-dark rounded-xl border border-white/5">
+                <div className="flex items-center gap-1.5">
                   <Shield className="w-3.5 h-3.5 text-indigo-400" />
                   <input 
                     type="number"
                     value={entity.ac || 10}
                     onChange={(e) => updateEntity({ ac: parseInt(e.target.value) || 0 })}
-                    className="w-5 bg-transparent text-xs font-black text-dragon-200 outline-none"
-                    title="AC"
+                    className="w-5 bg-transparent text-xs font-bold text-slate-200 outline-none"
                   />
                 </div>
-                <div className="w-px h-3 bg-white/10" />
-                {!entity.isPlayer ? (
-                  <div className="flex items-center gap-1.5 group/stat">
+                {!entity.isPlayer && (
+                  <div className="flex items-center gap-1.5 border-l border-white/10 pl-3">
                     <Target className="w-3.5 h-3.5 text-rose-400" />
                     <input 
                       type="number"
                       value={entity.dc || 10}
                       onChange={(e) => updateEntity({ dc: parseInt(e.target.value) || 0 })}
-                      className="w-5 bg-transparent text-xs font-black text-dragon-200 outline-none"
-                      title="DC"
+                      className="w-5 bg-transparent text-xs font-bold text-slate-200 outline-none"
                     />
                   </div>
-                ) : (
-                  <User className="w-3.5 h-3.5 text-indigo-500" />
                 )}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {entity.concentration && (
-                  <motion.span 
-                    animate={{ scale: [1, 1.05, 1], rotate: [0, 1, -1, 0] }}
-                    transition={{ repeat: Infinity, duration: 3 }}
-                    className="px-2.5 py-1 rounded-lg bg-warning-base/10 border border-warning-base/40 text-warning-light text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.1)]"
-                  >
-                    <Zap className="w-3 h-3 fill-current" /> Concentrating
-                  </motion.span>
-                )}
-                {/* Concentration Resolution Alerts */}
-                {alerts?.filter(a => a.type === 'concentration').map(alert => (
-                  <motion.div 
-                    key={alert.id}
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="flex items-center gap-2 px-2 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-200 text-[10px] font-bold"
-                  >
-                    <span>Save DC {alert.dc}</span>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => resolveConcentration(alert.id, true)}
-                        className="px-1.5 py-0.5 bg-health-base/20 hover:bg-health-base/40 border border-health-base/30 rounded text-[8px] uppercase tracking-tighter transition-colors"
-                      >
-                        Pass
-                      </button>
-                      <button 
-                        onClick={() => resolveConcentration(alert.id, false)}
-                        className="px-1.5 py-0.5 bg-rose-500/30 hover:bg-rose-500/50 border border-rose-500/40 rounded text-[8px] uppercase tracking-tighter transition-colors"
-                      >
-                        Fail
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-                {entity.groupId && (
-                  <span className="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/40 text-indigo-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                    <Users className="w-3 h-3" /> {entity.groupId}
-                  </span>
-                )}
-                
-                {/* Legendary Hub */}
-                {(entity.legendaryActionsMax > 0 || entity.legendaryResistancesMax > 0) && (
-                  <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-dragon-900/80 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
-                    {entity.legendaryActionsMax > 0 && (
-                      <div className="flex items-center gap-1.5 border-r border-white/10 pr-2">
-                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-tighter">Leg Actions</span>
-                        <div className="flex gap-1">
-                          {Array.from({ length: entity.legendaryActionsMax }).map((_, i) => (
-                            <button
-                              key={i}
-                              onClick={() => i < entity.legendaryActions && spendLegendaryAction(entity.id)}
-                              className={cn(
-                                "w-2.5 h-2.5 rounded-full border transition-all duration-300",
-                                i < entity.legendaryActions 
-                                  ? "bg-indigo-400 border-indigo-300 shadow-[0_0_5px_rgba(129,140,248,0.5)]" 
-                                  : "bg-dragon-950 border-white/10 opacity-30"
-                              )}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {entity.legendaryResistancesMax > 0 && (
-                      <div className="flex items-center gap-1.5 pl-1">
-                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-tighter">Resists</span>
-                        <div className="flex gap-1">
-                          {Array.from({ length: entity.legendaryResistancesMax }).map((_, i) => (
-                            <button
-                              key={i}
-                              onClick={() => i < entity.legendaryResistances && spendLegendaryResistance(entity.id)}
-                              className={cn(
-                                "w-2.5 h-2.5 rounded-md border rotate-45 transition-all duration-300",
-                                i < entity.legendaryResistances 
-                                  ? "bg-rose-500 border-rose-400 shadow-[0_0_5px_rgba(244,63,94,0.5)]" 
-                                  : "bg-dragon-950 border-white/10 opacity-30"
-                              )}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {entity.conditions.map(c => (
-                  <span key={c} className="px-2.5 py-1 rounded-lg bg-dragon-800 border-white/10 border text-dragon-200 text-[10px] font-black uppercase tracking-wider">
-                    {c}
-                  </span>
-                ))}
               </div>
             </div>
           </div>
 
-          {/* HP Console */}
-          <div className="flex flex-col lg:flex-row items-center gap-6 w-full md:w-auto">
-            <div className="w-full md:w-40 shrink-0">
-              <div className="flex justify-between items-baseline mb-2">
-                <div className="flex items-baseline gap-1.5">
+          {/* HP System */}
+          <div className="flex flex-col lg:flex-row items-center gap-6">
+            <div className="flex-1 w-full relative">
+              <div className="flex justify-between items-end mb-2 px-1">
+                <div className="flex items-baseline gap-1">
                   <span className={cn(
-                    "text-2xl font-black font-mono",
-                    isDead ? "text-dragon-600" : (isBloodied ? "text-rose-400" : "text-health-base")
+                    "text-xl font-bold font-mono",
+                    isDead ? "text-slate-600" : (isBloodied ? "text-rose-400" : "text-emerald-400")
                   )}>
                     {entity.hp}
                   </span>
-                  <span className="text-[10px] font-black text-dragon-600 uppercase">/ {entity.maxHp}</span>
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tighter">/ {entity.maxHp} HP</span>
                 </div>
                 {entity.tempHp > 0 && (
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-black border border-indigo-500/30">
-                    +{entity.tempHp}
+                  <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
+                    +{entity.tempHp} TMP
                   </span>
                 )}
               </div>
-              <div className="h-2.5 bg-dragon-950/50 rounded-full overflow-hidden border border-white/5 relative">
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${hpPercent}%` }}
-                  transition={{ type: "spring", stiffness: 100, damping: 15 }}
                   className={cn(
-                    "h-full rounded-full relative transition-colors duration-500",
-                    isDead ? "bg-dragon-800" : (isBloodied ? "bg-rose-600" : "bg-health-base")
+                    "h-full rounded-full relative",
+                    isDead ? "bg-slate-800" : (isBloodied ? "bg-rose-500" : "bg-emerald-500")
                   )}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent" />
-                </motion.div>
+                />
               </div>
             </div>
 
-            <div className="flex items-stretch glass-dark rounded-xl p-1.5 border border-white/10 shadow-lg gap-1.5">
-               <div className="flex flex-col gap-1">
-                 <input 
-                  type="number"
-                  placeholder="Amt"
-                  value={dmgInput}
-                  onChange={(e) => setDmgInput(e.target.value)}
-                  className="w-14 bg-dragon-900/50 rounded-lg text-center font-black text-sm outline-none placeholder:text-dragon-700 focus:ring-1 focus:ring-white/10 transition-all h-10"
-                 />
-                 <div className="flex gap-1">
-                   <button 
-                    onClick={() => setDmgInput(Math.floor(parseInt(dmgInput) / 2 || 0).toString())}
-                    className="flex-1 bg-white/5 hover:bg-white/10 text-[8px] font-black py-0.5 rounded border border-white/5 uppercase transition-colors"
-                    title="Half (Resistance)"
-                   >
-                     1/2
-                   </button>
-                   <button 
-                    onClick={() => setDmgInput((parseInt(dmgInput) * 2 || 0).toString())}
-                    className="flex-1 bg-white/5 hover:bg-white/10 text-[8px] font-black py-0.5 rounded border border-white/5 uppercase transition-colors"
-                    title="Double (Vulnerability)"
-                   >
-                     2x
-                   </button>
-                 </div>
-               </div>
-               <div className="relative">
-                 <select 
-                  value={dmgType}
-                  onChange={(e) => setDmgType(e.target.value)}
-                  className="bg-dragon-900/50 rounded-lg text-[10px] font-black uppercase tracking-tighter text-dragon-400 outline-none w-24 px-2 h-10 appearance-none border border-transparent focus:border-white/10"
-                 >
-                   {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                 </select>
-                 <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-dragon-600" />
-               </div>
-               <div className="flex gap-1">
-                 <button 
-                  onClick={handleApplyDamage} 
-                  className="w-10 h-10 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg transition-all active:scale-90"
-                  title="Damage"
-                 >
-                   <Minus className="w-5 h-5" />
-                 </button>
-                 <button 
-                  onClick={handleApplyHealing} 
-                  className="w-10 h-10 flex items-center justify-center bg-health-base/10 hover:bg-health-base text-health-base hover:text-white rounded-lg transition-all active:scale-90"
-                  title="Heal"
-                 >
-                   <Plus className="w-5 h-5" />
-                 </button>
-               </div>
+            {/* Quick Action Bar */}
+            <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-white/5 shadow-inner">
+              <input 
+                type="number"
+                placeholder="0"
+                value={dmgInput}
+                onChange={(e) => setDmgInput(e.target.value)}
+                className="w-12 h-9 bg-transparent text-center font-bold text-sm outline-none placeholder:text-slate-700"
+              />
+              <div className="flex gap-1 pr-1 border-r border-white/5 mr-1">
+                <button onClick={() => setDmgInput(Math.floor(parseInt(dmgInput) / 2 || 0).toString())} className="px-1.5 py-0.5 text-[8px] font-bold text-slate-500 hover:text-indigo-400 transition-colors uppercase">1/2</button>
+                <button onClick={() => setDmgInput((parseInt(dmgInput) * 2 || 0).toString())} className="px-1.5 py-0.5 text-[8px] font-bold text-slate-500 hover:text-rose-400 transition-colors uppercase">2x</button>
+              </div>
+              <div className="flex gap-1">
+                <button onClick={handleApplyDamage} className="p-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg transition-all active:scale-90 shadow-sm"><Minus className="w-4 h-4" /></button>
+                <button onClick={handleApplyHealing} className="p-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg transition-all active:scale-90 shadow-sm"><Plus className="w-4 h-4" /></button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2 p-3 md:p-4 border-t md:border-t-0 md:border-l border-white/5 bg-white/[0.02]">
+        {/* Action Column */}
+        <div className="flex flex-col items-center justify-center p-3 gap-2 border-l border-white/5 bg-black/10">
           <button 
             onClick={() => setExpanded(!expanded)}
             className={cn(
               "p-2.5 rounded-xl transition-all duration-300",
-              expanded ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "glass-dark text-dragon-400 hover:text-dragon-200"
+              expanded ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30" : "text-slate-500 hover:text-slate-200"
             )}
           >
             <Settings className={cn("w-5 h-5 transition-transform duration-500", expanded && "rotate-180")} />
@@ -380,192 +220,104 @@ const EntityCard = ({
         </div>
       </div>
 
-      {/* Expanded Controls */}
+      {/* Expanded Console */}
       <AnimatePresence>
         {expanded && (
           <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: 'auto' }}
-            exit={{ height: 0 }}
-            className="overflow-hidden bg-dragon-950/40 border-t border-white/5"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden bg-black/40 border-t border-white/5"
           >
-            <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Status & Effects */}
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="space-y-4">
-                <h4 className="text-[10px] font-bold text-dragon-500 uppercase tracking-[0.2em] mb-3">Status Management</h4>
-                
+                <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Skull className="w-3 h-3" /> Status & Effects
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={() => updateEntity({ concentration: !entity.concentration })}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all border",
-                      entity.concentration ? "bg-warning-base text-dragon-950 border-warning-base" : "glass text-dragon-400 border-white/5"
+                      "px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-2 transition-all border",
+                      entity.concentration ? "bg-amber-500 text-black border-amber-400" : "glass-dark text-slate-400 border-white/5 hover:border-white/10"
                     )}
                   >
-                    <Brain className="w-4 h-4" /> Concentration
+                    <Brain className="w-3.5 h-3.5" /> Concentration
                   </button>
-
-                  <div className="relative group/select">
-                    <select 
-                      onChange={(e) => { if(e.target.value) toggleCondition(e.target.value); e.target.value = ''; }}
-                      className="appearance-none bg-dragon-800 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-dragon-300 outline-none w-32 cursor-pointer pr-8"
-                    >
-                      <option value="">+ Condition</option>
-                      {CONDITIONS.filter(c => !entity.conditions.includes(c)).map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-dragon-500" />
-                  </div>
+                  <select 
+                    onChange={(e) => { if(e.target.value) {
+                      const next = entity.conditions.includes(e.target.value) ? entity.conditions.filter(c => c !== e.target.value) : [...entity.conditions, e.target.value];
+                      updateEntity({ conditions: next });
+                      e.target.value = '';
+                    }}}
+                    className="bg-black/40 border border-white/5 rounded-lg px-2 py-1 text-[10px] text-slate-300 outline-none w-24"
+                  >
+                    <option value="">+ Cond</option>
+                    {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
-
-                <div className="space-y-2">
-                   <h5 className="text-[10px] font-bold text-dragon-600 uppercase">Active Effects (Auto-tick)</h5>
-                   <div className="flex gap-2">
-                      <input id={`eff-name-${entity.id}`} placeholder="Spell/Effect" className="flex-1 glass text-xs p-2 rounded-lg outline-none" />
-                      <input id={`eff-dur-${entity.id}`} type="number" placeholder="Rnds" className="w-12 glass text-xs p-2 rounded-lg outline-none text-center" />
-                      <button 
-                        onClick={() => {
-                          const name = document.getElementById(`eff-name-${entity.id}`).value;
-                          const dur = parseInt(document.getElementById(`eff-dur-${entity.id}`).value);
-                          if (name && dur > 0) {
-                            updateEntity({ effects: [...entity.effects, { id: Math.random(), name, duration: dur, tickOn: 'start' }] });
-                            document.getElementById(`eff-name-${entity.id}`).value = '';
-                            document.getElementById(`eff-dur-${entity.id}`).value = '';
-                          }
-                        }}
-                        className="p-2 glass text-indigo-400 rounded-lg"><Plus className="w-4 h-4" /></button>
-                   </div>
-                   <div className="flex flex-wrap gap-2">
-                     {entity.effects.map(ef => (
-                       <span key={ef.id} className="glass px-2 py-1 rounded-md text-[10px] flex items-center gap-2 border-indigo-500/20 text-indigo-300">
-                         {ef.name} ({ef.duration})
-                         <X className="w-3 h-3 cursor-pointer" onClick={() => updateEntity({ effects: entity.effects.filter(e => e.id !== ef.id) })} />
-                       </span>
-                     ))}
-                   </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {entity.conditions.map(c => (
+                    <span key={c} className="px-2 py-0.5 rounded-md bg-slate-800 border border-white/5 text-[9px] font-bold text-slate-300 uppercase">{c}</span>
+                  ))}
                 </div>
               </div>
 
-              {/* High-Level Resources */}
               <div className="space-y-4">
-                <h4 className="text-[10px] font-bold text-dragon-500 uppercase tracking-[0.2em] mb-3">Legendary Resources</h4>
+                <h4 className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Zap className="w-3 h-3" /> Combat Resources
+                </h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-dragon-600 uppercase">Action Points (Max)</label>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="number"
-                        value={entity.legendaryActionsMax || 0}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value) || 0;
-                          updateEntity({ legendaryActionsMax: val, legendaryActions: val });
-                        }}
-                        className="w-full glass text-xs p-2 rounded-lg outline-none text-center font-mono"
-                      />
+                  <div className="p-3 glass-dark rounded-xl border border-white/5">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase block mb-2">Legendary Actions</span>
+                    <div className="flex gap-1.5">
+                      {Array.from({ length: entity.legendaryActionsMax }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => i < entity.legendaryActions && spendLegendaryAction(entity.id)}
+                          className={cn(
+                            "w-2.5 h-2.5 rounded-full border transition-all",
+                            i < entity.legendaryActions ? "bg-indigo-400 border-indigo-300" : "bg-black/40 border-white/5 opacity-30"
+                          )}
+                        />
+                      ))}
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-dragon-600 uppercase">Resistances (Max)</label>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="number"
-                        value={entity.legendaryResistancesMax || 0}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value) || 0;
-                          updateEntity({ legendaryResistancesMax: val, legendaryResistances: val });
-                        }}
-                        className="w-full glass text-xs p-2 rounded-lg outline-none text-center font-mono"
-                      />
+                  <div className="p-3 glass-dark rounded-xl border border-white/5">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase block mb-2">Resistances</span>
+                    <div className="flex gap-1.5">
+                      {Array.from({ length: entity.legendaryResistancesMax }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => i < entity.legendaryResistances && spendLegendaryResistance(entity.id)}
+                          className={cn(
+                            "w-2.5 h-2.5 rounded border rotate-45 transition-all",
+                            i < entity.legendaryResistances ? "bg-rose-500 border-rose-400" : "bg-black/40 border-white/5 opacity-30"
+                          )}
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Elements & Groups */}
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-bold text-dragon-500 uppercase tracking-[0.2em] mb-3">Mechanical Overrides</h4>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-dragon-600 mb-1">
-                    <span>ELEMENTAL AFFINITES</span>
-                    <Info className="w-3 h-3" title="Used by the built-in damage calculator" />
-                  </div>
-                  <ElementalRow label="Resist." arr={entity.resistances} color="text-warning-base" onChange={(next) => updateEntity({ resistances: next })} />
-                  <ElementalRow label="Immune" arr={entity.immunities} color="text-health-base" onChange={(next) => updateEntity({ immunities: next })} />
-                  <ElementalRow label="Vulner." arr={entity.vulnerabilities} color="text-rose-400" onChange={(next) => updateEntity({ vulnerabilities: next })} />
-                </div>
-
-                {!entity.isPlayer && (
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-dragon-600">BATCH CONTROL & LEGENDARY</span>
-                    <div className="flex gap-2">
-                      <div className="flex-1 glass flex items-center px-3 rounded-lg border-indigo-500/20">
-                        <Users className="w-4 h-4 text-indigo-400 mr-2" />
-                        <input 
-                          placeholder="Group ID" 
-                          value={entity.groupId}
-                          onChange={(e) => updateEntity({ groupId: e.target.value })}
-                          className="bg-transparent text-xs py-2 w-full outline-none" 
-                        />
-                      </div>
-                      <div className="glass flex items-center px-3 rounded-lg border-amber-500/20" title="Legendary Actions (Current / Max)">
-                        <Zap className="w-4 h-4 text-amber-400 mr-2" />
-                        <input 
-                          type="number"
-                          value={entity.legendaryActions}
-                          onChange={(e) => updateEntity({ legendaryActions: parseInt(e.target.value) || 0 })}
-                          className="bg-transparent text-xs py-2 w-8 text-center outline-none" 
-                        />
-                        <span className="text-dragon-600 mx-1">/</span>
-                        <input 
-                          type="number"
-                          value={entity.maxLegendaryActions}
-                          onChange={(e) => updateEntity({ maxLegendaryActions: parseInt(e.target.value) || 0 })}
-                          className="bg-transparent text-xs py-2 w-8 text-center outline-none" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Narrative & Maintenance */}
-              <div className="space-y-4 flex flex-col">
-                <h4 className="text-[10px] font-bold text-dragon-500 uppercase tracking-[0.2em] mb-3">Narrative Tracking</h4>
-                
-                <textarea 
-                  placeholder="Emotional state, current goal, hidden development..."
-                  value={entity.narrativeNotes}
-                  onChange={(e) => updateEntity({ narrativeNotes: e.target.value })}
-                  className="flex-1 glass rounded-xl p-3 text-sm italic text-dragon-300 min-h-[100px] outline-none border-white/5 focus:border-indigo-500/30 transition-colors scrollbar-custom"
-                />
-
-                <div className="flex items-center justify-between pt-4 mt-auto">
-                   <label className="flex items-center gap-2 cursor-pointer group/chk">
-                     <div className={cn(
-                       "w-4 h-4 rounded border border-white/20 flex items-center justify-center transition-colors",
-                       useGroup ? "bg-indigo-500 border-indigo-500" : "bg-transparent group-hover:border-white/40"
-                     )}>
-                       {useGroup && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                     </div>
-                     <input type="checkbox" className="hidden" checked={useGroup} onChange={() => setUseGroup(!useGroup)} />
-                     <span className="text-[10px] font-bold text-dragon-500 uppercase">Apply to Batch Group</span>
-                   </label>
-
-                    <button 
-                     onClick={(e) => { e.stopPropagation(); duplicateEntity(); }}
-                     className="flex items-center gap-2 px-3 py-1.5 text-indigo-400 hover:text-white hover:bg-indigo-500/20 rounded-lg text-xs font-bold transition-all"
-                    >
-                      <Copy className="w-4 h-4" /> Duplicate
-                    </button>
-
-                    <button 
-                     onClick={removeEntity}
-                     className="flex items-center gap-2 px-3 py-1.5 text-rose-400 hover:text-white hover:bg-rose-500/20 rounded-lg text-xs font-bold transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete
-                    </button>
+              <div className="flex flex-col gap-4">
+                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                  <ScrollText className="w-3 h-3" /> Maintenance
+                </h4>
+                <div className="flex flex-col gap-2">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); duplicateEntity(); }}
+                    className="flex items-center justify-center gap-2 py-2 glass-dark hover:bg-white/5 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-white/5 transition-all"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-indigo-400" /> Clone Entity
+                  </button>
+                  <button 
+                    onClick={removeEntity}
+                    className="flex items-center justify-center gap-2 py-2 glass-dark hover:bg-rose-500/10 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-white/5 text-rose-400 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Purge Entry
+                  </button>
                 </div>
               </div>
             </div>
@@ -573,29 +325,6 @@ const EntityCard = ({
         )}
       </AnimatePresence>
     </motion.div>
-  );
-};
-
-const ElementalRow = ({ label, arr, color, onChange }) => {
-  return (
-    <div className="flex items-center gap-2 glass px-3 py-1.5 rounded-lg border-white/5">
-      <span className={cn("text-[10px] font-bold uppercase w-14", color)}>{label}</span>
-      <div className="flex flex-wrap gap-1 flex-1">
-        {arr.map(t => (
-          <span key={t} className="bg-dragon-800 text-dragon-400 px-1.5 py-0.5 rounded text-[8px] font-bold flex items-center gap-1 group/chip">
-            {t}
-            <X className="w-2 h-2 cursor-pointer hover:text-rose-400" onClick={() => onChange(arr.filter(x => x !== t))} />
-          </span>
-        ))}
-        <select 
-          onChange={(e) => { if(e.target.value) onChange([...new Set([...arr, e.target.value])]); e.target.value = ''; }}
-          className="bg-transparent text-[8px] font-bold text-dragon-500 outline-none w-12 cursor-pointer"
-        >
-          <option value="">+ Add</option>
-          {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-    </div>
   );
 };
 

@@ -19,7 +19,7 @@ const getIconConfig = (log) => {
   const msg = log.message.toLowerCase();
 
   // 1. Explicit subType matching (Priority)
-  if (subType === 'heal') return { icon: <Heart className="w-4 h-4" />, color: 'text-health-base', bg: 'bg-health-base/10' };
+  if (subType === 'heal') return { icon: <Heart className="w-4 h-4" />, color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
   if (subType === 'legendary') return { icon: <Zap className="w-4 h-4" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' };
   if (subType === 'resistance') return { icon: <Shield className="w-4 h-4" />, color: 'text-rose-400', bg: 'bg-rose-500/10' };
   if (subType === 'concentration') return { icon: <ShieldAlert className="w-4 h-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10' };
@@ -38,16 +38,15 @@ const getIconConfig = (log) => {
 
   // 2. Fallbacks based on message parsing
   if (msg.includes('group')) return { icon: <Users className="w-4 h-4" />, color: 'text-indigo-300', bg: 'bg-indigo-500/10' };
-  if (type === 'heal') return { icon: <Heart className="w-4 h-4" />, color: 'text-health-base', bg: 'bg-health-base/10' };
+  if (type === 'heal') return { icon: <Heart className="w-4 h-4" />, color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
   if (type === 'damage') return { icon: <Swords className="w-4 h-4" />, color: 'text-rose-400', bg: 'bg-rose-500/10' };
 
-  return { icon: <Info className="w-4 h-4" />, color: 'text-dragon-400', bg: 'bg-dragon-500/10' };
+  return { icon: <Info className="w-4 h-4" />, color: 'text-slate-400', bg: 'bg-white/5' };
 };
 
 const ActionLedger = ({ logs = [], onClear }) => {
   const scrollRef = useRef(null);
 
-  // Auto-scroll to top (where newest logs are) when logs change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -55,39 +54,40 @@ const ActionLedger = ({ logs = [], onClear }) => {
   }, [logs.length]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between px-2 mb-4 shrink-0">
-        <span className="text-[10px] font-bold text-dragon-500 uppercase tracking-[0.2em] flex items-center gap-2">
-          <Clock className="w-3 h-3" /> Action Ledger
-        </span>
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--color-obsidian-900)] rounded-3xl border border-white/5 shadow-2xl">
+      <div className="flex items-center justify-between p-4 border-b border-white/5 shrink-0 bg-black/20">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2">
+            <Clock className="w-3 h-3" /> Mission Log
+          </span>
+          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">Chronicle of Fate</span>
+        </div>
         {logs.length > 0 && (
           <button 
             onClick={onClear}
-            className="group text-[10px] font-bold text-dragon-600 hover:text-rose-500 uppercase tracking-tighter flex items-center gap-1 transition-all duration-300"
+            className="group px-3 py-1.5 rounded-lg hover:bg-rose-500/10 text-[9px] font-black text-slate-500 hover:text-rose-400 uppercase tracking-widest transition-all border border-transparent hover:border-rose-500/20"
           >
-            <Trash2 className="w-3 h-3 transition-transform group-hover:scale-110" /> 
-            Purge Logs
+            Purge History
           </button>
         )}
       </div>
 
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto scrollbar-none space-y-2 pr-1 pb-4 mask-fade-edge"
+        className="flex-1 overflow-y-auto scrollbar-none p-4 space-y-3 mask-fade-edge"
       >
         <AnimatePresence initial={false} mode="popLayout">
           {logs.length === 0 ? (
             <motion.div 
               key="empty"
-              initial={{ opacity: 0, scale: 0.9 }} 
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="h-full flex flex-col items-center justify-center text-center p-8 select-none"
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40"
             >
-              <div className="w-16 h-16 mb-4 rounded-full bg-dragon-900/50 flex items-center justify-center border border-dragon-800/30">
-                <Info className="w-6 h-6 text-dragon-700" />
+               <div className="w-12 h-12 mb-4 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                <Info className="w-5 h-5 text-slate-600" />
               </div>
-              <p className="text-xs italic font-serif text-dragon-600">The cycle of combat begins. No entries recorded.</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Silence on the Field</p>
             </motion.div>
           ) : (
             logs.map((log) => {
@@ -96,44 +96,35 @@ const ActionLedger = ({ logs = [], onClear }) => {
                 <motion.div
                   key={log.id}
                   layout
-                  initial={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                  className={cn(
-                    "relative group p-3 rounded-xl border border-white/5 glass transition-all duration-300",
-                    "hover:border-white/10 hover:bg-white/[0.02]",
-                    log.type === 'damage' ? "hover:border-rose-500/20" : 
-                    log.type === 'heal' ? "hover:border-health-base/20" : ""
-                  )}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative group p-4 rounded-2xl border border-white/5 bg-black/20 hover:bg-black/40 transition-all duration-300"
                 >
                   <div className="flex items-start gap-4">
                     <div className={cn(
-                      "mt-0.5 p-2 rounded-lg shrink-0 transition-transform duration-300 group-hover:scale-110",
+                      "mt-0.5 p-2 rounded-xl shrink-0 shadow-lg",
                       config.bg, config.color
                     )}>
                       {config.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[9px] font-bold text-dragon-600 uppercase tracking-tighter">{log.timestamp}</span>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{log.timestamp}</span>
                         {log.subType && (
-                          <span className={cn("text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded", config.bg, config.color)}>
+                          <span className={cn(
+                            "text-[8px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-full border border-white/5",
+                            config.bg, config.color
+                          )}>
                             {log.subType}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-dragon-200 leading-relaxed font-medium">
+                      <p className="text-[11px] text-slate-300 leading-relaxed font-semibold">
                         {log.message}
                       </p>
                     </div>
                   </div>
-                  
-                  {/* Glow effect on hover */}
-                  <div className={cn(
-                    "absolute inset-0 rounded-xl opacity-0 group-hover:opacity-10 pointer-events-none transition-opacity blur-xl",
-                    config.color.replace('text-', 'bg-')
-                  )} />
                 </motion.div>
               );
             })
@@ -145,4 +136,3 @@ const ActionLedger = ({ logs = [], onClear }) => {
 };
 
 export default ActionLedger;
-

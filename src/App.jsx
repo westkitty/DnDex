@@ -3,7 +3,7 @@ import { useEncounterState } from './hooks/useEncounterState';
 import MainDisplay from './components/MainDisplay';
 import TopBar from './components/TopBar';
 import RulesPanel from './components/RulesPanel';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ToastProvider, useToast } from './components/ToastProvider';
 import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -28,7 +28,13 @@ function AppContent() {
   }, [syncStatus, showToast]);
 
   return (
-    <div className="flex flex-col h-screen bg-dragon-950 text-dragon-100 selection:bg-indigo-500/30">
+    <div className="flex flex-col h-screen bg-[var(--color-obsidian-950)] text-slate-100 selection:bg-indigo-500/30 overflow-hidden font-sans antialiased">
+      {/* Background Ambience */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-rose-500/5 rounded-full blur-[150px] animate-pulse delay-1000" />
+      </div>
+
       <TopBar 
         encounter={encounter} 
         toggleRules={() => setIsRulesOpen(!isRulesOpen)} 
@@ -36,7 +42,7 @@ function AppContent() {
         setView={setView}
       />
       
-      <div className="flex flex-1 overflow-hidden relative">
+      <main className="flex flex-1 overflow-hidden relative z-10">
         <MainDisplay encounter={encounter} view={view} />
         
         <AnimatePresence>
@@ -44,25 +50,34 @@ function AppContent() {
             <RulesPanel encounter={encounter} onClose={() => setIsRulesOpen(false)} />
           )}
         </AnimatePresence>
-      </div>
+      </main>
 
-      {/* Persistence / Offline Indicator */}
-      <div className="fixed bottom-4 left-4 z-50 pointer-events-auto">
-        <div className={cn(
-          "flex items-center gap-2 glass px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border border-white/5",
-          syncStatus === 'saving' && "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
-          syncStatus === 'saved' && "text-health-base bg-health-base/5 border-health-base/30",
-          syncStatus === 'conflict' && "text-warning-base bg-warning-base/10 border-warning-base/50 animate-pulse cursor-pointer",
-          syncStatus === 'error' && "text-rose-400 bg-rose-500/10 border-rose-500/50 text-rose-300"
-        )}>
-          {syncStatus === 'saving' && <RefreshCw className="w-3 h-3 animate-spin" />}
-          {syncStatus === 'saved' && <CheckCircle2 className="w-3 h-3" />}
-          {syncStatus === 'conflict' && <AlertTriangle className="w-3 h-3" />}
+      {/* Persistence HUD */}
+      <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className={cn(
+            "flex items-center gap-3 glass px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 border border-white/5 shadow-2xl",
+            syncStatus === 'saving' && "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
+            syncStatus === 'saved' && "text-emerald-400 bg-emerald-500/5 border-emerald-500/30",
+            syncStatus === 'conflict' && "text-amber-400 bg-amber-500/10 border-amber-500/50 animate-pulse",
+            syncStatus === 'error' && "text-rose-400 bg-rose-500/10 border-rose-500/50"
+          )}
+        >
+          <div className="relative">
+            {syncStatus === 'saving' ? <RefreshCw className="w-3 h-3 animate-spin" /> :
+             syncStatus === 'saved' ? <CheckCircle2 className="w-3 h-3" /> :
+             <AlertTriangle className="w-3 h-3" />}
+             {syncStatus === 'saved' && <div className="absolute inset-0 bg-emerald-400 rounded-full animate-ping opacity-20" />}
+          </div>
           
-          {syncStatus === 'saving' ? 'Syncing...' : 
-           syncStatus === 'conflict' ? 'Conflict Detected' : 
-           syncStatus === 'error' ? 'Sync Error' : 'Encounter Synced'}
-        </div>
+          <span className="drop-shadow-sm">
+            {syncStatus === 'saving' ? 'Syncing...' : 
+             syncStatus === 'conflict' ? 'Conflict' : 
+             syncStatus === 'error' ? 'Sync Error' : 'System Ready'}
+          </span>
+        </motion.div>
       </div>
     </div>
   );

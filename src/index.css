@@ -1,30 +1,87 @@
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
-  body {
-    @apply bg-dragon-950 text-dragon-100 font-sans antialiased overflow-hidden;
+  :root {
+    /* Dragon Obsidian Palette */
+    --color-obsidian-950: #050508;
+    --color-obsidian-900: #0a0a0f;
+    --color-obsidian-800: #12121a;
+    --color-obsidian-700: #1c1c2b;
+    
+    /* Ether (Indigo/Violet) */
+    --color-ether-50: #f5f3ff;
+    --color-ether-500: #6366f1;
+    --color-ether-600: #4f46e5;
+    --color-ether-400: #818cf8;
+    
+    /* Crimson (Rose/Red) */
+    --color-crimson-500: #f43f5e;
+    --color-crimson-600: #e11d48;
+    --color-crimson-400: #fb7185;
+
+    /* Semantic Tokens */
+    --health-base: #10b981;
+    --health-dark: #064e3b;
+    --warning-base: #f59e0b;
+    
+    /* Surface Tokens */
+    --glass-bg: rgba(18, 18, 26, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shine: rgba(255, 255, 255, 0.03);
+
+    /* Typography Scale (Fluid) */
+    --font-serif: "Crimson Pro", serif;
+    --font-sans: "Inter", system-ui, sans-serif;
+    --font-mono: "Fira Code", monospace;
+
+    --text-h1: clamp(2rem, 1rem + 4vw, 3.5rem);
+    --text-h2: clamp(1.5rem, 1rem + 2.5vw, 2.5rem);
+    --text-h3: clamp(1.25rem, 1rem + 1.5vw, 1.75rem);
+    --text-body: clamp(0.875rem, 0.8rem + 0.3vw, 1rem);
+    
+    /* Shadows */
+    --shadow-premium: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+    --shadow-glow-ether: 0 0 20px rgba(99, 102, 241, 0.15);
+    --shadow-glow-crimson: 0 0 20px rgba(244, 63, 94, 0.15);
   }
 
-  h1, h2, h3, h4 {
-    @apply font-serif font-bold;
+  body {
+    @apply bg-[var(--color-obsidian-950)] text-slate-300 font-sans antialiased selection:bg-indigo-500/30;
+    background-image: 
+      radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(244, 63, 94, 0.05) 0%, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-dragon-900/40 backdrop-blur-xl border border-white/10 shadow-glass;
+    @apply bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--glass-border)] shadow-[var(--shadow-premium)];
+    background-image: linear-gradient(135deg, var(--glass-shine), transparent);
   }
-  
+
   .glass-dark {
-    @apply bg-dragon-950/60 backdrop-blur-xl border border-white/5 shadow-glass;
+    @apply bg-black/40 backdrop-blur-2xl border border-white/5;
   }
 
   .interactive-glass {
-    @apply glass transition-all duration-300 hover:bg-dragon-800/60 hover:border-white/20 active:scale-[0.98];
+    @apply glass hover:bg-white/[0.05] hover:border-white/20 transition-all duration-300 cursor-pointer active:scale-95;
+  }
+
+  .text-gradient-ether {
+    @apply bg-gradient-to-r from-[var(--color-ether-400)] to-[var(--color-ether-600)] bg-clip-text text-transparent;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mask-fade-edge {
+    mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
   }
 
   .scrollbar-custom {

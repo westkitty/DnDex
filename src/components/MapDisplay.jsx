@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MousePointer2, Pencil, Eraser, Move, Maximize, ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
+import { MousePointer2, Pencil, Eraser, Move, Maximize, ZoomIn, ZoomOut, RotateCcw, Trash2, Map as MapIcon } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -28,7 +28,7 @@ const MapDisplay = ({ encounter }) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Draw grid
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
     ctx.lineWidth = 1;
     for (let x = 0; x < canvas.width; x += GRID_SIZE) {
       ctx.beginPath();
@@ -81,8 +81,8 @@ const MapDisplay = ({ encounter }) => {
     setCurrentPath({
       type: 'pencil',
       points: [pos],
-      color: tool === 'eraser' ? '#0a0a0a' : '#6366f1',
-      size: tool === 'eraser' ? 20 : 3
+      color: tool === 'eraser' ? 'var(--color-obsidian-950)' : 'var(--color-ether-500)',
+      size: tool === 'eraser' ? 30 : 4
     });
   };
 
@@ -105,48 +105,59 @@ const MapDisplay = ({ encounter }) => {
   };
 
   const clearDrawing = () => {
-    if (confirm("Clear all drawings?")) {
+    if (confirm("Sanitize battlefield? This will remove all tactical sketches.")) {
       updateMap({ drawing: [] });
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-dragon-950 relative overflow-hidden rounded-3xl border border-white/5">
-      {/* Toolbar */}
-      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-        <div className="glass p-1.5 rounded-2xl flex flex-col gap-1 border border-white/10">
+    <div className="flex flex-col h-full bg-[var(--color-obsidian-950)] relative overflow-hidden rounded-[2.5rem] border border-white/5 shadow-inner">
+      {/* HUD: Toolbar */}
+      <div className="absolute top-6 left-6 z-30 flex flex-col gap-3">
+        <div className="glass-dark p-2 rounded-[1.5rem] flex flex-col gap-2 border border-white/10 shadow-2xl">
           <ToolButton 
             active={tool === 'move'} 
             onClick={() => setTool('move')} 
-            icon={<Move className="w-4 h-4" />} 
-            label="Move Tokens"
+            icon={<Move className="w-5 h-5" />} 
+            label="Tactical Maneuvers"
           />
           <ToolButton 
             active={tool === 'pencil'} 
             onClick={() => setTool('pencil')} 
-            icon={<Pencil className="w-4 h-4" />} 
-            label="Draw"
+            icon={<Pencil className="w-5 h-5" />} 
+            label="Strategic Sketch"
           />
           <ToolButton 
             active={tool === 'eraser'} 
             onClick={() => setTool('eraser')} 
-            icon={<Eraser className="w-4 h-4" />} 
-            label="Eraser"
+            icon={<Eraser className="w-5 h-5" />} 
+            label="Clear Obstacles"
           />
           <div className="h-px bg-white/10 my-1 mx-2" />
           <ToolButton 
             onClick={clearDrawing} 
-            icon={<Trash2 className="w-4 h-4" />} 
-            label="Clear All"
+            icon={<Trash2 className="w-5 h-5" />} 
+            label="Purge Map"
             danger
           />
+        </div>
+      </div>
+
+      {/* HUD: Map Status */}
+      <div className="absolute top-6 right-6 z-30 flex gap-3 pointer-events-none">
+        <div className="glass-dark px-4 py-2 rounded-2xl border border-white/10 flex items-center gap-3">
+           <MapIcon className="w-4 h-4 text-slate-500" />
+           <div className="flex flex-col">
+             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Theatre</span>
+             <span className="text-[10px] font-bold text-slate-300">Tactical Grid • 5ft Scale</span>
+           </div>
         </div>
       </div>
 
       {/* Map Canvas Layer */}
       <div 
         ref={containerRef}
-        className="flex-1 relative cursor-crosshair overflow-auto scrollbar-none bg-dragon-900/50"
+        className="flex-1 relative cursor-crosshair overflow-auto scrollbar-none bg-[radial-gradient(circle_at_center,var(--color-obsidian-900)_0%,var(--color-obsidian-950)_100%)]"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -154,14 +165,14 @@ const MapDisplay = ({ encounter }) => {
       >
         <canvas 
           ref={canvasRef}
-          width={2000}
-          height={2000}
+          width={2500}
+          height={2500}
           className="absolute top-0 left-0"
         />
 
         {/* Tokens Layer */}
         {entities.map((entity, index) => {
-          const pos = map.tokens[entity.id] || { x: 100 + (index * 60), y: 100 };
+          const pos = map.tokens[entity.id] || { x: 200 + (index * 60), y: 200 };
           return (
             <Token 
               key={entity.id}
@@ -175,8 +186,16 @@ const MapDisplay = ({ encounter }) => {
       </div>
 
       {/* Legend / Status */}
-      <div className="absolute bottom-4 right-4 glass px-4 py-2 rounded-full border border-white/10 text-[10px] font-bold uppercase tracking-widest text-dragon-400 pointer-events-none">
-        {entities.length} Tokens on Board • 1sq = 5ft
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 glass-dark px-6 py-2.5 rounded-full border border-white/10 text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 pointer-events-none flex items-center gap-4">
+        <div className="flex items-center gap-2">
+           <div className="w-2 h-2 rounded-full bg-indigo-500" />
+           <span>{entities.filter(e => e.isPlayer).length} Heroes</span>
+        </div>
+        <div className="w-px h-3 bg-white/10" />
+        <div className="flex items-center gap-2">
+           <div className="w-2 h-2 rounded-full bg-rose-500" />
+           <span>{entities.filter(e => !e.isPlayer).length} Foes</span>
+        </div>
       </div>
     </div>
   );
@@ -187,12 +206,12 @@ const ToolButton = ({ active, onClick, icon, label, danger }) => (
     onClick={onClick}
     title={label}
     className={cn(
-      "p-2.5 rounded-xl transition-all duration-200 flex items-center justify-center",
+      "p-3 rounded-2xl transition-all duration-300 flex items-center justify-center",
       active 
-        ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+        ? "bg-indigo-600 text-white shadow-[var(--shadow-glow-ether)] scale-110" 
         : danger 
-          ? "text-rose-400 hover:bg-rose-500/10"
-          : "text-dragon-400 hover:bg-white/5"
+          ? "text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
+          : "text-slate-500 hover:bg-white/5 hover:text-slate-300"
     )}
   >
     {icon}
@@ -246,7 +265,7 @@ const Token = ({ entity, pos, onMove, isDraggable }) => {
   }, [isDragging, offset, onMove]);
 
   return (
-    <div 
+    <motion.div 
       onMouseDown={handleMouseDown}
       style={{ 
         left: pos.x, 
@@ -256,22 +275,37 @@ const Token = ({ entity, pos, onMove, isDraggable }) => {
         zIndex: isDragging ? 50 : 10
       }}
       className={cn(
-        "absolute rounded-full border-2 flex items-center justify-center transition-shadow select-none group",
-        entity.isPlayer ? "bg-indigo-600 border-indigo-400" : "bg-rose-700 border-rose-500",
+        "absolute rounded-full border-2 flex items-center justify-center transition-all select-none group",
+        entity.isPlayer 
+          ? "bg-indigo-600 border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.4)]" 
+          : "bg-rose-700 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)]",
         isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-default",
-        isDragging && "shadow-2xl scale-110 ring-4 ring-white/20 z-50",
-        entity.hp <= 0 && "opacity-30 grayscale"
+        isDragging && "scale-125 ring-4 ring-white/10 z-50",
+        entity.hp <= 0 && "opacity-30 grayscale blur-[1px]"
       )}
     >
-      <span className="text-white font-black text-[10px] uppercase truncate px-1">
+      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
+      
+      <span className="text-white font-black text-[11px] uppercase tracking-tighter truncate px-1 drop-shadow-md">
         {entity.name.substring(0, 2)}
       </span>
       
-      {/* Tooltip on hover */}
-      <div className="absolute -top-8 left-1/2 -translate-x-1/2 glass px-2 py-0.5 rounded text-[8px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
-        {entity.name} ({entity.hp} HP)
+      {/* Interactive HUD on hover */}
+      <div className="absolute -top-12 left-1/2 -translate-x-1/2 glass-dark px-3 py-1.5 rounded-xl text-[9px] font-black whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 scale-90 group-hover:scale-100 border border-white/10 shadow-2xl">
+        <div className="flex flex-col items-center gap-0.5">
+           <span className="text-slate-100 uppercase tracking-widest">{entity.name}</span>
+           <span className={cn(
+             "text-[8px] font-bold",
+             entity.hp <= entity.maxHp / 2 ? "text-rose-400" : "text-emerald-400"
+           )}>{entity.hp} / {entity.maxHp} VITALITY</span>
+        </div>
       </div>
-    </div>
+
+      {/* Active Turn Pulse */}
+      {isDraggable && !isDragging && (
+        <div className="absolute inset-0 rounded-full ring-2 ring-white/20 animate-ping opacity-20" />
+      )}
+    </motion.div>
   );
 };
 

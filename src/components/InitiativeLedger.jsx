@@ -1,7 +1,7 @@
 import React from 'react';
 import { Reorder, AnimatePresence, useDragControls, motion } from 'framer-motion';
 import EntityCard from './EntityCard';
-import { Flag, Zap } from 'lucide-react';
+import { Flag, Zap, Swords, UserPlus } from 'lucide-react';
 
 const InitiativeItem = ({ 
   entity, index, turnIndex, entities, updateEntity, removeEntity, 
@@ -9,7 +9,6 @@ const InitiativeItem = ({
   spendLegendaryAction, spendLegendaryResistance, duplicateEntity
 }) => {
   const dragControls = useDragControls();
-
   const entityAlerts = alerts.filter(a => a.entityId === entity.id);
 
   return (
@@ -17,11 +16,13 @@ const InitiativeItem = ({
       value={entity}
       dragListener={false}
       dragControls={dragControls}
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="relative"
     >
+      <InitiativeItemMarker isActive={index === turnIndex} isUpcoming={index === (turnIndex + 1) % entities.length} />
       <EntityCard
         entity={entity}
         isActive={index === turnIndex}
@@ -39,31 +40,69 @@ const InitiativeItem = ({
   );
 };
 
+const InitiativeItemMarker = ({ isActive, isUpcoming }) => {
+  if (!isActive && !isUpcoming) return null;
+  return (
+    <div className={cn(
+      "absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-8 rounded-full z-10",
+      isActive ? "bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.6)]" : "bg-slate-700"
+    )} />
+  );
+};
+
+const cn = (...inputs) => {
+  return inputs.filter(Boolean).join(' ');
+};
+
 const InitiativeLedger = ({ encounter }) => {
   const { 
     state, setEntitiesOrder, updateEntity, removeEntity, 
     applyDamage, applyHealing, resolveConcentration,
-    spendLegendaryAction, spendLegendaryResistance, duplicateEntity
+    spendLegendaryAction, spendLegendaryResistance, duplicateEntity, addEntity
   } = encounter;
   const { entities, turnIndex, alerts } = state;
 
+  if (entities.length === 0) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        className="flex flex-col items-center justify-center py-20 px-6 glass-dark rounded-3xl border border-dashed border-white/10"
+      >
+        <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 border border-indigo-500/20">
+          <Swords className="w-8 h-8 text-indigo-400" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-100 mb-2">The Battlefield is Empty</h3>
+        <p className="text-sm text-slate-500 text-center max-w-xs mb-8">Deploy your heroes and foes to begin the tactical sequence.</p>
+        <div className="flex gap-3">
+          <button onClick={() => addEntity(true)} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-600/20">
+            <UserPlus className="w-4 h-4" /> Add Hero
+          </button>
+          <button onClick={() => addEntity(false)} className="flex items-center gap-2 px-6 py-2.5 glass-dark hover:bg-white/5 text-slate-300 rounded-xl font-bold transition-all active:scale-95 border border-white/10">
+            Add Foe
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
-    <div className="space-y-4 pb-32">
+    <div className="space-y-6 pb-40 relative">
       <div className="flex items-center justify-between mb-2 px-2">
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-dragon-500 flex items-center gap-2">
-          < Zap className="w-3 h-3 text-warning-base" />
-          Combat Sequence
-        </h3>
-        <span className="text-[10px] font-bold text-dragon-600 uppercase">
-          {entities.length} Active Participants
-        </span>
+        <div className="flex flex-col">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 flex items-center gap-2">
+            <Zap className="w-3 h-3 fill-current" /> Tactical Sequence
+          </h3>
+          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">
+            {entities.length} Units in Deployment
+          </span>
+        </div>
       </div>
 
       <Reorder.Group 
         axis="y" 
         values={entities} 
         onReorder={setEntitiesOrder}
-        className="space-y-3"
+        className="space-y-4"
       >
         <AnimatePresence initial={false}>
           {entities.map((entity, index) => {
@@ -73,15 +112,15 @@ const InitiativeLedger = ({ encounter }) => {
               <React.Fragment key={entity.id}>
                 {showLairActionMarker && (
                   <motion.div 
-                    initial={{ opacity: 0, scaleY: 0 }}
-                    animate={{ opacity: 1, scaleY: 1 }}
-                    className="flex items-center gap-3 py-1 px-4 border-l-2 border-rose-500/50 bg-rose-500/5"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-4 py-3 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10"
                   >
-                    <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-rose-300 uppercase tracking-widest">
-                      Lair Actions (Initiative 20)
+                    <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+                    <span className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">
+                      Lair Actions Phase (Init 20)
                     </span>
-                    <div className="flex-1 h-px bg-rose-500/20" />
+                    <div className="flex-1 h-px bg-gradient-to-r from-rose-500/20 to-transparent" />
                   </motion.div>
                 )}
                 <InitiativeItem
@@ -106,11 +145,9 @@ const InitiativeLedger = ({ encounter }) => {
       </Reorder.Group>
 
       {/* Turn Marker Anchor */}
-      <div className="mt-8 opacity-20 hover:opacity-100 transition-opacity">
-        <div className="h-px bg-dragon-800 flex items-center justify-center">
-           <div className="glass px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-dragon-500 border-white/5 flex items-center gap-2">
-             <Flag className="w-3 h-3" /> End of Sequence
-           </div>
+      <div className="mt-12 opacity-40 hover:opacity-100 transition-opacity flex justify-center">
+        <div className="glass px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 border-white/5 flex items-center gap-3">
+          <Flag className="w-3 h-3" /> End of Deployment
         </div>
       </div>
     </div>

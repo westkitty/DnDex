@@ -23,7 +23,7 @@ const RULES_DATABASE = [
   { title: 'Paralyzed', category: 'Condition', content: 'A paralyzed creature is incapacitated and can’t move or speak. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage. Any attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.' },
   { title: 'Petrified', category: 'Condition', content: 'A petrified creature is transformed, along with any nonmagical object it is wearing or carrying, into a solid inanimate substance (usually stone). Its weight increases by a factor of ten, and it ceases aging. The creature is incapacitated, can’t move or speak, and is unaware of its surroundings.' },
   { title: 'Poisoned', category: 'Condition', content: 'A poisoned creature has disadvantage on attack rolls and ability checks.' },
-  { title: 'Prone', category: 'Condition', content: 'A prone creature’s only movement option is to crawl, unless it stands up and thereby ends the condition. The creature has disadvantage on attack rolls. An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.' },
+  { title: 'Prone', category: 'Condition', content: 'A prone creature’s only movement option is to crawl, unless it stands up and thereby ends the condition. The creature has disadvantage on attack rolls. An attack roll against the creature have advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.' },
   { title: 'Restrained', category: 'Condition', content: 'A restrained creature’s speed becomes 0. Attack rolls against the creature have advantage, and the creature’s attack rolls have disadvantage. The creature has disadvantage on Dexterity saving throws.' },
   { title: 'Stunned', category: 'Condition', content: 'A stunned creature is incapacitated, can’t move, and can speak only falteringly. The creature automatically fails Strength and Dexterity saving throws. Attack rolls against the creature have advantage.' },
   { title: 'Unconscious', category: 'Condition', content: 'An unconscious creature is incapacitated, can’t move or speak, and is unaware of its surroundings. The creature drops whatever it’s holding and falls prone. It automatically fails Str and Dex saves. Attack rolls against it have advantage. Any attack that hits is a critical hit if the attacker is within 5 feet.' },
@@ -35,7 +35,7 @@ const RULES_DATABASE = [
 ];
 
 const RulesPanel = ({ encounter, onClose }) => {
-  const [activeTab, setActiveTab] = useState('ledger'); // Default to Ledger in Phase 2
+  const [activeTab, setActiveTab] = useState('ledger'); 
   const [query, setQuery] = useState('');
   const { state, updateState } = encounter;
 
@@ -56,84 +56,92 @@ const RulesPanel = ({ encounter, onClose }) => {
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
-      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="absolute md:relative right-0 top-0 h-full w-full md:w-80 glass-dark border-l border-white/10 z-40 flex flex-col shadow-2xl"
+      transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+      className="absolute right-0 top-0 h-full w-full md:w-[400px] bg-[var(--color-obsidian-950)] border-l border-white/5 z-50 flex flex-col shadow-[-20px_0_40px_rgba(0,0,0,0.5)]"
     >
-      {/* Header & Close */}
-      <div className="p-4 border-b border-white/5 flex items-center justify-between bg-dragon-950/40">
-        <div className="flex items-center gap-2">
-          {activeTab === 'library' ? (
-            <Library className="w-5 h-5 text-indigo-400" />
-          ) : (
-            <History className="w-5 h-5 text-rose-400" />
-          )}
-          <h2 className="font-serif font-bold text-lg tracking-tight">
-            {activeTab === 'library' ? 'Grimoire' : 'Ledger'}
+      {/* Header */}
+      <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/20">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 mb-0.5">
+             {activeTab === 'library' ? <ScrollText className="w-4 h-4 text-indigo-400" /> : <History className="w-4 h-4 text-rose-400" />}
+             <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Tactical Interface</span>
+          </div>
+          <h2 className="text-xl font-black text-slate-100 uppercase italic tracking-wider">
+            {activeTab === 'library' ? 'Grimoire' : 'Action Log'}
           </h2>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
-          <X className="w-5 h-5 opacity-50" />
+        <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl transition-all group">
+          <X className="w-5 h-5 text-slate-500 group-hover:text-white transition-colors" />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex p-1 bg-dragon-950 border-b border-white/5">
-        <button 
-          onClick={() => setActiveTab('ledger')}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-lg",
-            activeTab === 'ledger' ? "bg-white/5 text-rose-400" : "text-dragon-500 hover:text-dragon-300"
-          )}
-        >
-          <History className="w-3.5 h-3.5" /> Ledger
-        </button>
-        <button 
-          onClick={() => setActiveTab('library')}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-lg",
-            activeTab === 'library' ? "bg-white/5 text-indigo-400" : "text-dragon-500 hover:text-dragon-300"
-          )}
-        >
-          <Library className="w-3.5 h-3.5" /> Library
-        </button>
+      <div className="px-6 py-4 bg-black/10">
+        <div className="flex p-1.5 bg-black/40 rounded-[1.25rem] border border-white/5">
+          <button 
+            onClick={() => setActiveTab('ledger')}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] transition-all rounded-xl",
+              activeTab === 'ledger' ? "bg-white/10 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+             Combat Ledger
+          </button>
+          <button 
+            onClick={() => setActiveTab('library')}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] transition-all rounded-xl",
+              activeTab === 'library' ? "bg-white/10 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+             Rules Grimoire
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden p-4">
+      <div className="flex-1 flex flex-col overflow-hidden px-6">
         <AnimatePresence mode="wait">
           {activeTab === 'library' ? (
             <motion.div 
               key="library"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
               className="flex-1 flex flex-col overflow-hidden"
             >
               <div className="relative mb-6">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-dragon-600" />
+                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                 <input 
-                  placeholder="Search rules..."
+                  placeholder="Filter tactical data..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full glass bg-dragon-950/40 border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none focus:border-indigo-500/50 transition-all placeholder:text-dragon-600"
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-xs font-bold text-slate-200 outline-none focus:border-indigo-500/30 transition-all placeholder:text-slate-700"
                 />
               </div>
 
-              <div className="flex-1 overflow-y-auto scrollbar-custom space-y-6">
+              <div className="flex-1 overflow-y-auto scrollbar-none space-y-8 pb-10 mask-fade-edge">
                 {categories.map(cat => {
                   const items = filtered.filter(i => i.category === cat);
                   if (items.length === 0) return null;
                   return (
-                    <div key={cat} className="space-y-3">
-                      <h3 className="text-[10px] font-bold text-dragon-500 uppercase tracking-[0.2em] px-1">{cat}s</h3>
-                      {items.map(item => (
-                        <div key={item.title} className="glass p-4 rounded-xl border-white/5 hover:bg-white/5 transition-colors group cursor-default">
-                          <h4 className="font-serif font-bold text-indigo-300 mb-1 group-hover:text-indigo-200 transition-colors uppercase tracking-wide flex items-center gap-2 text-sm">
-                            {cat === 'Condition' ? <Skull className="w-3 h-3 opacity-50" /> : <Info className="w-3 h-3 opacity-50" />}
-                            {item.title}
-                          </h4>
-                          <p className="text-[11px] text-dragon-400 leading-relaxed font-sans">{item.content}</p>
-                        </div>
-                      ))}
+                    <div key={cat} className="space-y-4">
+                      <div className="flex items-center gap-3">
+                         <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">{cat}s</span>
+                         <div className="flex-1 h-px bg-white/5" />
+                      </div>
+                      <div className="grid gap-3">
+                        {items.map(item => (
+                          <div key={item.title} className="p-5 rounded-2xl bg-black/20 border border-white/5 hover:border-indigo-500/20 hover:bg-black/30 transition-all group">
+                            <div className="flex items-center gap-3 mb-2">
+                               <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                               <h4 className="text-[11px] font-black text-slate-200 uppercase tracking-widest">{item.title}</h4>
+                            </div>
+                            <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                              {item.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
@@ -142,14 +150,14 @@ const RulesPanel = ({ encounter, onClose }) => {
           ) : (
             <motion.div 
               key="ledger"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex-1 overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 overflow-hidden pb-6"
             >
               <ActionLedger 
                 logs={state.logs || []} 
-                onClear={() => updateState(prev => ({ ...prev, logs: [] }), "Audit log reset by DM.")} 
+                onClear={() => updateState(prev => ({ ...prev, logs: [] }), "Audit log purged.")} 
               />
             </motion.div>
           )}
@@ -157,10 +165,13 @@ const RulesPanel = ({ encounter, onClose }) => {
       </div>
 
       {/* Footer Info */}
-      <div className="p-4 bg-dragon-950/40 border-t border-white/5 shrink-0">
-        <div className="flex items-center gap-2 text-[8px] font-bold text-dragon-600 uppercase tracking-widest">
-          <div className="w-1.5 h-1.5 rounded-full bg-health-base animate-pulse" />
-          {activeTab === 'library' ? 'D&D 5e Reference Library' : 'Live Action Auditing Active'}
+      <div className="p-6 bg-black/20 border-t border-white/5 shrink-0">
+        <div className="flex items-center justify-between">
+           <div className="flex items-center gap-2 text-[9px] font-black text-slate-600 uppercase tracking-widest">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Reference Core 5E-v1
+           </div>
+           <span className="text-[9px] font-bold text-slate-700">SRD-NC-v2.0</span>
         </div>
       </div>
     </motion.aside>
