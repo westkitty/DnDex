@@ -3,6 +3,7 @@ import { useEncounterState } from './hooks/useEncounterState';
 import MainDisplay from './components/MainDisplay';
 import TopBar from './components/TopBar';
 import RulesPanel from './components/RulesPanel';
+import BestiaryModal from './components/BestiaryModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastProvider, useToast } from './components/ToastProvider';
 import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -18,6 +19,7 @@ function AppContent() {
   const { syncStatus } = encounter;
   const { showToast } = useToast();
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [isBestiaryOpen, setIsBestiaryOpen] = useState(false);
   const [view, setView] = useState('list'); // 'list' | 'map'
 
   // Handle Sync Conflict
@@ -38,6 +40,7 @@ function AppContent() {
       <TopBar 
         encounter={encounter} 
         toggleRules={() => setIsRulesOpen(!isRulesOpen)} 
+        toggleBestiary={() => setIsBestiaryOpen(!isBestiaryOpen)}
         view={view}
         setView={setView}
       />
@@ -48,6 +51,16 @@ function AppContent() {
         <AnimatePresence>
           {isRulesOpen && (
             <RulesPanel encounter={encounter} onClose={() => setIsRulesOpen(false)} />
+          )}
+          {isBestiaryOpen && (
+            <BestiaryModal 
+              onClose={() => setIsBestiaryOpen(false)} 
+              onAdd={(monster) => {
+                encounter.addEntityFromTemplate(monster);
+                setIsBestiaryOpen(false);
+                showToast(`Deployed ${monster.name} to the field.`, 'info');
+              }}
+            />
           )}
         </AnimatePresence>
       </main>

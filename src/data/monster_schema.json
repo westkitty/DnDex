@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Monster",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "size": { "type": "string" },
+    "type": { "type": "string" },
+    "alignment": { "type": "string" },
+    "ac": { "type": "integer" },
+    "hp": { "type": "integer" },
+    "maxHp": { "type": "integer" },
+    "speed": { "type": "string" },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "str": { "type": "integer" },
+        "dex": { "type": "integer" },
+        "con": { "type": "integer" },
+        "int": { "type": "integer" },
+        "wis": { "type": "integer" },
+        "cha": { "type": "integer" }
+      }
+    },
+    "saves": { "type": "array", "items": { "type": "string" } },
+    "skills": { "type": "array", "items": { "type": "string" } },
+    "resistances": { "type": "array", "items": { "type": "string" } },
+    "immunities": { "type": "array", "items": { "type": "string" } },
+    "vulnerabilities": { "type": "array", "items": { "type": "string" } },
+    "senses": { "type": "string" },
+    "languages": { "type": "string" },
+    "cr": { "type": "string" },
+    "traits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "legendaryActions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "legendaryActionsMax": { "type": "integer" },
+    "legendaryResistancesMax": { "type": "integer" }
+  },
+  "required": ["name", "ac", "hp", "maxHp"]
+}

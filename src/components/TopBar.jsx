@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   ChevronRight, ChevronLeft, Undo, Redo, Book, UserPlus, Ghost, 
-  Settings, Download, Shield, Swords, AlertCircle, X, FileUp, Zap
+  Settings, Download, Shield, Swords, FileUp, Skull
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from './ToastProvider';
@@ -12,7 +12,7 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const TopBar = ({ encounter, toggleRules, view, setView }) => {
+const TopBar = ({ encounter, toggleRules, toggleBestiary, view, setView }) => {
   const { state, advanceTurn, undo, redo, canUndo, canRedo, addEntity, importState, exportState } = encounter;
   const { showToast } = useToast();
   const [showExport, setShowExport] = useState(false);
@@ -153,6 +153,14 @@ const TopBar = ({ encounter, toggleRules, view, setView }) => {
             <Ghost className="w-4 h-4 group-hover:scale-110 transition-transform" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Add Foe</span>
           </button>
+          <button 
+            onClick={toggleBestiary} 
+            className="flex items-center gap-2 px-4 py-2.5 glass-dark hover:bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl transition-all group shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+            title="Open Bestiary"
+          >
+            <Skull className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Bestiary</span>
+          </button>
         </div>
 
         <div className="relative">
@@ -205,117 +213,12 @@ const TopBar = ({ encounter, toggleRules, view, setView }) => {
             )}
           </AnimatePresence>
         </div>
-      </div>
-    </header>
-  );
-};
 
-export default TopBar;
-
-      <div className="flex items-center gap-2 md:gap-4">
-        {/* Map / List Toggle */}
-        <div className="flex glass rounded-lg overflow-hidden border-white/5 p-1">
-          <button 
-            onClick={() => setView('list')}
-            className={cn(
-              "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all",
-              view === 'list' ? "bg-indigo-600 text-white shadow-lg" : "text-dragon-400 hover:text-dragon-200"
-            )}
-          >
-            List
-          </button>
-          <button 
-            onClick={() => setView('map')}
-            className={cn(
-              "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all",
-              view === 'map' ? "bg-indigo-600 text-white shadow-lg" : "text-dragon-400 hover:text-dragon-200"
-            )}
-          >
-            Map
-          </button>
-        </div>
-
-        {state.alerts.filter(a => a.type !== 'concentration').length > 0 && (
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning-dark/20 border border-warning-base/30 text-warning-light text-xs font-bold animate-pulse">
-            <AlertCircle className="w-4 h-4" />
-            {state.alerts.filter(a => a.type !== 'concentration')[0].message}
-          </div>
-        )}
-
-        <div className="flex glass rounded-lg overflow-hidden border-white/5 p-1">
-          <button 
-            onClick={() => {
-              const note = undo();
-              if (note) showToast(`Undone: ${note}`, 'history');
-            }} 
-            disabled={!canUndo} 
-            className="p-2 hover:bg-white/5 disabled:opacity-20 transition-colors"
-          >
-            <Undo className="w-4 h-4" />
-          </button>
-          <div className="w-px bg-white/5" />
-          <button 
-            onClick={() => {
-              const note = redo();
-              if (note) showToast(`Redone: ${note}`, 'history');
-            }} 
-            disabled={!canRedo} 
-            className="p-2 hover:bg-white/5 disabled:opacity-20 transition-colors"
-          >
-            <Redo className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button onClick={() => addEntity(true)} className="p-2.5 glass-dark border hover:border-indigo-500/50 text-indigo-400 rounded-lg hover:shadow-indigo-500/10 transition-all flex items-center gap-2">
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden xl:inline text-xs font-bold uppercase tracking-wide">Player</span>
-          </button>
-          <button onClick={() => addEntity(false)} className="p-2.5 glass-dark border hover:border-rose-500/50 text-rose-400 rounded-lg hover:shadow-rose-500/10 transition-all flex items-center gap-2">
-            <Ghost className="w-4 h-4" />
-            <span className="hidden xl:inline text-xs font-bold uppercase tracking-wide">Monster</span>
-          </button>
-        </div>
-
-        <div className="relative">
-          <button onClick={() => setShowExport(!showExport)} className="p-2.5 glass rounded-lg text-dragon-300">
-            <Download className="w-4 h-4" />
-          </button>
-          <AnimatePresence>
-            {showExport && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute right-0 top-full mt-2 w-48 glass-dark z-50 rounded-xl border border-white/10 p-2 shadow-2xl"
-              >
-                <div className="flex justify-between items-center px-3 py-2 border-b border-white/5 mb-1">
-                  <span className="text-[10px] font-bold text-dragon-500 uppercase tracking-widest">Encounter Data</span>
-                  <X className="w-3 h-3 cursor-pointer" onClick={() => setShowExport(false)} />
-                </div>
-                <button onClick={exportState} className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-indigo-400" /> Full Backup
-                </button>
-                <button onClick={() => handleExport('player')} className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2">
-                  <Swords className="w-4 h-4 text-rose-400" /> Player View (Text)
-                </button>
-                <div className="h-px bg-white/5 my-1" />
-                <button onClick={handleImportClick} className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2">
-                  <FileUp className="w-4 h-4 text-emerald-400" /> Import JSON
-                </button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept=".json" 
-                  onChange={handleFileChange} 
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <button onClick={toggleRules} className="p-2.5 glass hover:border-indigo-500/40 rounded-lg text-dragon-300">
+        <button 
+          onClick={toggleRules} 
+          className="p-3 glass hover:bg-white/5 rounded-xl text-slate-400 transition-all"
+          title="Reference Rules"
+        >
           <Book className="w-4 h-4" />
         </button>
       </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, Shield, Info, MoreHorizontal, Skull, Zap, Droplet, 
   Flame, Wind, Brain, Users, Trash2, ChevronDown, GripVertical, 
-  Eye, EyeOff, Minus, Plus, Settings, ScrollText, Swords, Target, User, X, Copy
+  Eye, EyeOff, Minus, Plus, Settings, ScrollText, Swords, Target, User, X, Copy, BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { clsx } from 'clsx';
@@ -23,6 +23,7 @@ const EntityCard = ({
   const [dmgInput, setDmgInput] = useState('');
   const [dmgType, setDmgType] = useState('Slashing');
   const [useGroup, setUseGroup] = useState(false);
+  const [isReferenceOpen, setIsReferenceOpen] = useState(false);
 
   if (!entity || !entity.id) return null;
 
@@ -217,6 +218,18 @@ const EntityCard = ({
           >
             <Settings className={cn("w-5 h-5 transition-transform duration-500", expanded && "rotate-180")} />
           </button>
+          {entity.actions && (
+            <button 
+              onClick={() => setIsReferenceOpen(!isReferenceOpen)}
+              className={cn(
+                "p-2.5 rounded-xl transition-all duration-300",
+                isReferenceOpen ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30" : "text-slate-500 hover:text-slate-200"
+              )}
+              title="Monster Stat Block"
+            >
+              <BookOpen className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -320,6 +333,63 @@ const EntityCard = ({
                   </button>
                 </div>
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isReferenceOpen && entity.actions && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden bg-black/60 border-t border-amber-500/20"
+          >
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-6 gap-2 bg-black/40 p-4 rounded-xl border border-white/5">
+                {entity.stats && Object.entries(entity.stats).map(([stat, val]) => (
+                  <div key={stat} className="flex flex-col items-center">
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat}</span>
+                    <span className="text-sm font-bold text-slate-100">{val}</span>
+                    <span className="text-[9px] text-slate-400 font-mono">({Math.floor((val-10)/2) >= 0 ? '+' : ''}{Math.floor((val-10)/2)})</span>
+                  </div>
+                ))}
+              </div>
+
+              {entity.traits?.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Special Traits</h5>
+                  {entity.traits.map(t => (
+                    <div key={t.name} className="text-xs leading-relaxed">
+                      <span className="font-bold text-slate-200 italic mr-2">{t.name}.</span>
+                      <span className="text-slate-400">{t.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <h5 className="text-[9px] font-black text-rose-400 uppercase tracking-[0.2em]">Actions</h5>
+                {entity.actions.map(a => (
+                  <div key={a.name} className="text-xs leading-relaxed">
+                    <span className="font-bold text-slate-200 italic mr-2">{a.name}.</span>
+                    <span className="text-slate-400">{a.description}</span>
+                  </div>
+                ))}
+              </div>
+
+              {entity.legendaryActionsList?.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-[9px] font-black text-amber-400 uppercase tracking-[0.2em]">Legendary Actions</h5>
+                  {entity.legendaryActionsList.map(a => (
+                    <div key={a.name} className="text-xs leading-relaxed">
+                      <span className="font-bold text-slate-200 italic mr-2">{a.name}.</span>
+                      <span className="text-slate-400">{a.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

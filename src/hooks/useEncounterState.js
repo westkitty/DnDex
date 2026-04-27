@@ -141,12 +141,10 @@ export const useEncounterState = () => {
   // --- ACTIONS ---
 
   const undo = useCallback(() => {
-    let note = "";
     setState(prev => {
       if (prev.historyPointer > 0) {
         // The action being undone is the one that CREATED the current state we are in.
         // So we look at the current pointer's note.
-        note = prev.history[prev.historyPointer]?.note || "Action";
         const nextPointer = prev.historyPointer - 1;
         return {
           ...prev.history[nextPointer],
@@ -239,6 +237,51 @@ export const useEncounterState = () => {
     }), `Added ${name} to the initiative.`);
   }, [updateState]);
 
+  const addEntityFromTemplate = useCallback((template) => {
+    const newEntity = {
+      id: generateId(),
+      name: template.name,
+      isPlayer: false,
+      hp: template.hp,
+      maxHp: template.maxHp,
+      tempHp: 0,
+      ac: template.ac,
+      dc: template.dc || 10,
+      initiative: 10,
+      conditions: [],
+      effects: [],
+      concentration: false,
+      groupId: '',
+      narrativeNotes: '',
+      resistances: template.resistances || [],
+      immunities: template.immunities || [],
+      vulnerabilities: template.vulnerabilities || [],
+      hidden: false,
+      legendaryActions: template.legendaryActionsMax || 0,
+      legendaryActionsMax: template.legendaryActionsMax || 0,
+      legendaryResistances: template.legendaryResistancesMax || 0,
+      legendaryResistancesMax: template.legendaryResistancesMax || 0,
+      // Metadata for rich display
+      size: template.size,
+      type: template.type,
+      alignment: template.alignment,
+      stats: template.stats,
+      saves: template.saves,
+      skills: template.skills,
+      senses: template.senses,
+      languages: template.languages,
+      cr: template.cr,
+      traits: template.traits,
+      actions: template.actions,
+      legendaryActionsList: template.legendaryActions
+    };
+
+    updateState(prev => ({
+      ...prev,
+      entities: [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative)
+    }), `Added ${template.name} from bestiary.`);
+  }, [updateState]);
+
   const duplicateEntity = useCallback((id) => {
     updateState(prev => {
       const entity = prev.entities.find(e => e.id === id);
@@ -281,13 +324,10 @@ export const useEncounterState = () => {
   }, [updateState]);
 
   const updateEntity = useCallback((id, updates) => {
-    updateState(prev => {
-      const entity = prev.entities.find(e => e.id === id);
-      return {
-        ...prev,
-        entities: prev.entities.map(e => e.id === id ? { ...e, ...updates } : e)
-      };
-    }, (prev, next) => {
+    updateState(prev => ({
+      ...prev,
+      entities: prev.entities.map(e => e.id === id ? { ...e, ...updates } : e)
+    }), (prev) => {
       const entity = prev.entities.find(e => e.id === id);
       if (updates.name) return `Renamed ${entity?.name} to ${updates.name}.`;
       return `Updated ${entity?.name}.`;
@@ -323,7 +363,6 @@ export const useEncounterState = () => {
   }, [updateState]);
 
   const removeEntity = useCallback((id) => {
-    const entity = state.entities.find(e => e.id === id);
     updateState(prev => {
       const newTokens = { ...prev.map.tokens };
       delete newTokens[id];
@@ -332,8 +371,8 @@ export const useEncounterState = () => {
         entities: prev.entities.filter(e => e.id !== id),
         map: { ...prev.map, tokens: newTokens }
       };
-    }, `Removed ${entity?.name || 'entity'} from combat.`);
-  }, [updateState, state.entities]);
+    }, `Removed from combat.`);
+  }, [updateState]);
 
   const addAlert = useCallback((message, type = 'info') => {
     updateState(prev => ({
@@ -362,7 +401,7 @@ export const useEncounterState = () => {
           targets.some(t => t.id === e.id) ? { ...e, hp: Math.min(e.maxHp, e.hp + amount) } : e
         )
       };
-    }, (prev, next) => {
+    }, (prev) => {
       const target = prev.entities.find(e => e.id === id);
       return `${target?.name} ${toGroup ? 'Group' : ''} healed for ${amount} HP.`;
     }, 'heal');
@@ -414,7 +453,7 @@ export const useEncounterState = () => {
         entities: newEntities,
         alerts: newAlerts.slice(0, 10) // Allow more alerts now that we filter them
       };
-    }, (prev, next) => {
+    }, (prev) => {
       const target = prev.entities.find(e => e.id === id);
       return `${target?.name} ${toGroup ? 'Group' : ''} took ${amount} ${type} damage.`;
     }, type);
@@ -577,6 +616,7 @@ export const useEncounterState = () => {
     updateMap,
     updateToken,
     exportState,
+    addEntityFromTemplate,
     canUndo: state.historyPointer > 0,
     canRedo: state.historyPointer < state.history.length - 1,
   };
