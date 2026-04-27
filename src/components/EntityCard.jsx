@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, Shield, Info, MoreHorizontal, Skull, Zap, Droplet, 
   Flame, Wind, Brain, Users, Trash2, ChevronDown, GripVertical, 
-  Eye, EyeOff, Minus, Plus, Settings, ScrollText, Swords, Target, User
+  Eye, EyeOff, Minus, Plus, Settings, ScrollText, Swords, Target, User, X, Copy
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { clsx } from 'clsx';
@@ -17,7 +17,7 @@ function cn(...inputs) {
 
 const EntityCard = ({ 
   entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing, 
-  resolveConcentration, spendLegendaryAction, spendLegendaryResistance, alerts, dragControls 
+  resolveConcentration, spendLegendaryAction, spendLegendaryResistance, alerts, dragControls, duplicateEntity
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [dmgInput, setDmgInput] = useState('');
@@ -553,12 +553,19 @@ const EntityCard = ({
                      <span className="text-[10px] font-bold text-dragon-500 uppercase">Apply to Batch Group</span>
                    </label>
 
-                   <button 
-                    onClick={removeEntity}
-                    className="flex items-center gap-2 px-3 py-1.5 text-rose-400 hover:text-white hover:bg-rose-500/20 rounded-lg text-xs font-bold transition-all"
-                   >
-                     <Trash2 className="w-4 h-4" /> Delete
-                   </button>
+                    <button 
+                     onClick={(e) => { e.stopPropagation(); duplicateEntity(); }}
+                     className="flex items-center gap-2 px-3 py-1.5 text-indigo-400 hover:text-white hover:bg-indigo-500/20 rounded-lg text-xs font-bold transition-all"
+                    >
+                      <Copy className="w-4 h-4" /> Duplicate
+                    </button>
+
+                    <button 
+                     onClick={removeEntity}
+                     className="flex items-center gap-2 px-3 py-1.5 text-rose-400 hover:text-white hover:bg-rose-500/20 rounded-lg text-xs font-bold transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </button>
                 </div>
               </div>
             </div>

@@ -6,7 +6,7 @@ import { Flag, Zap } from 'lucide-react';
 const InitiativeItem = ({ 
   entity, index, turnIndex, entities, updateEntity, removeEntity, 
   applyDamage, applyHealing, resolveConcentration, alerts,
-  spendLegendaryAction, spendLegendaryResistance
+  spendLegendaryAction, spendLegendaryResistance, duplicateEntity
 }) => {
   const dragControls = useDragControls();
 
@@ -33,6 +33,7 @@ const InitiativeItem = ({
         resolveConcentration={resolveConcentration}
         alerts={entityAlerts}
         dragControls={dragControls}
+        duplicateEntity={duplicateEntity}
       />
     </Reorder.Item>
   );
@@ -42,7 +43,7 @@ const InitiativeLedger = ({ encounter }) => {
   const { 
     state, setEntitiesOrder, updateEntity, removeEntity, 
     applyDamage, applyHealing, resolveConcentration,
-    spendLegendaryAction, spendLegendaryResistance
+    spendLegendaryAction, spendLegendaryResistance, duplicateEntity
   } = encounter;
   const { entities, turnIndex, alerts } = state;
 
@@ -95,6 +96,7 @@ const InitiativeLedger = ({ encounter }) => {
                   resolveConcentration={resolveConcentration}
                   spendLegendaryAction={spendLegendaryAction}
                   spendLegendaryResistance={spendLegendaryResistance}
+                  duplicateEntity={() => duplicateEntity(entity.id)}
                   alerts={alerts}
                 />
               </React.Fragment>

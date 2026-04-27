@@ -18,6 +18,7 @@ function AppContent() {
   const { syncStatus } = encounter;
   const { showToast } = useToast();
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [view, setView] = useState('list'); // 'list' | 'map'
 
   // Handle Sync Conflict
   useEffect(() => {
@@ -28,10 +29,15 @@ function AppContent() {
 
   return (
     <div className="flex flex-col h-screen bg-dragon-950 text-dragon-100 selection:bg-indigo-500/30">
-      <TopBar encounter={encounter} toggleRules={() => setIsRulesOpen(!isRulesOpen)} />
+      <TopBar 
+        encounter={encounter} 
+        toggleRules={() => setIsRulesOpen(!isRulesOpen)} 
+        view={view}
+        setView={setView}
+      />
       
       <div className="flex flex-1 overflow-hidden relative">
-        <MainDisplay encounter={encounter} />
+        <MainDisplay encounter={encounter} view={view} />
         
         <AnimatePresence>
           {isRulesOpen && (

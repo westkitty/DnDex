@@ -15,6 +15,11 @@ const INITIAL_STATE = {
   history: [], 
   historyPointer: -1,
   lastUpdated: Date.now(),
+  map: {
+    drawing: [], // Array of { type, points, color, size }
+    tokens: {},   // Map of entityId -> { x, y }
+    view: { x: 0, y: 0, zoom: 1 }
+  }
 };
 
 const SYNC_CHANNEL = "dm-hub-sync";
@@ -83,7 +88,7 @@ export const useEncounterState = () => {
   }, [state]);
 
   // Core update function with history tracking and logging
-  const updateState = useCallback((updater, logMessage = null, subType = null) => {
+  const updateState = useCallback((updater, logMessage = null, subType = null, skipHistory = false) => {
     setState(prev => {
       const newState = typeof updater === 'function' ? updater(prev) : updater;
       const now = Date.now();
@@ -107,8 +112,18 @@ export const useEncounterState = () => {
         }, ...newLogs].slice(0, 100); // Keep last 100 logs
       }
 
-      const newHistory = prev.history.slice(0, prev.historyPointer + 1);
       const stateWithMeta = { ...cleanNew, logs: newLogs, lastUpdated: now };
+      
+      if (skipHistory) {
+        return {
+          ...stateWithMeta,
+          history: prev.history,
+          historyPointer: prev.historyPointer,
+          isHydrated: true
+        };
+      }
+
+      const newHistory = prev.history.slice(0, prev.historyPointer + 1);
       newHistory.push({ ...stateWithMeta, note: messageText });
       
       const startIdx = Math.max(0, newHistory.length - 50);
@@ -172,12 +187,24 @@ export const useEncounterState = () => {
 
   const importState = useCallback((imported) => {
     if (!imported.entities) return;
-    updateState({
+    const merged = {
+      ...INITIAL_STATE,
       ...imported,
-      history: [imported],
-      historyPointer: 0
-    }, "Encounter imported from file");
+      map: { ...INITIAL_STATE.map, ...(imported.map || {}) }
+    };
+    updateState(merged, "Encounter imported from file");
   }, [updateState]);
+
+  const exportState = useCallback(() => {
+    const { history: _, historyPointer: __, isHydrated: ___, ...toExport } = state;
+    const blob = new Blob([JSON.stringify(toExport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `encounter-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [state]);
 
   const addEntity = useCallback((isPlayer = false) => {
     const name = isPlayer ? 'New Hero' : 'New Creature';
@@ -210,6 +237,47 @@ export const useEncounterState = () => {
       ...prev,
       entities: [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative)
     }), `Added ${name} to the initiative.`);
+  }, [updateState]);
+
+  const duplicateEntity = useCallback((id) => {
+    updateState(prev => {
+      const entity = prev.entities.find(e => e.id === id);
+      if (!entity) return prev;
+      
+      // Handle name numbering robustly
+      const baseName = entity.name.replace(/\s\d+$/, '').trim();
+      const sameBase = prev.entities.filter(e => e.name.startsWith(baseName));
+      
+      let maxNum = 0;
+      sameBase.forEach(e => {
+        const match = e.name.match(/\s(\d+)$/);
+        if (match) {
+          const n = parseInt(match[1]);
+          if (n > maxNum) maxNum = n;
+        }
+      });
+      
+      const newName = `${baseName} ${maxNum + 1}`;
+
+      const cloned = {
+        ...entity,
+        id: generateId(),
+        name: newName,
+        hp: entity.maxHp,
+        tempHp: 0,
+        conditions: [],
+        effects: [],
+        concentration: false
+      };
+
+      return {
+        ...prev,
+        entities: [...prev.entities, cloned].sort((a, b) => b.initiative - a.initiative)
+      };
+    }, (prev) => {
+      const entity = prev.entities.find(e => e.id === id);
+      return `Duplicated ${entity?.name}.`;
+    });
   }, [updateState]);
 
   const updateEntity = useCallback((id, updates) => {
@@ -256,10 +324,15 @@ export const useEncounterState = () => {
 
   const removeEntity = useCallback((id) => {
     const entity = state.entities.find(e => e.id === id);
-    updateState(prev => ({
-      ...prev,
-      entities: prev.entities.filter(e => e.id !== id)
-    }), `Removed ${entity?.name || 'entity'} from combat.`);
+    updateState(prev => {
+      const newTokens = { ...prev.map.tokens };
+      delete newTokens[id];
+      return {
+        ...prev,
+        entities: prev.entities.filter(e => e.id !== id),
+        map: { ...prev.map, tokens: newTokens }
+      };
+    }, `Removed ${entity?.name || 'entity'} from combat.`);
   }, [updateState, state.entities]);
 
   const addAlert = useCallback((message, type = 'info') => {
@@ -465,6 +538,23 @@ export const useEncounterState = () => {
       };
     }, "Initiative order adjusted.");
   }, [updateState]);
+
+  const updateMap = useCallback((mapUpdates) => {
+    updateState(prev => ({
+      ...prev,
+      map: { ...prev.map, ...mapUpdates }
+    }));
+  }, [updateState]);
+
+  const updateToken = useCallback((entityId, pos, isFinal = true) => {
+    updateState(prev => ({
+      ...prev,
+      map: {
+        ...prev.map,
+        tokens: { ...prev.map.tokens, [entityId]: pos }
+      }
+    }), isFinal ? `Moved token.` : null, null, !isFinal);
+  }, [updateState]);
   return {
     state,
     addEntity,
@@ -483,6 +573,10 @@ export const useEncounterState = () => {
     resolveConcentration,
     spendLegendaryAction,
     spendLegendaryResistance,
+    duplicateEntity,
+    updateMap,
+    updateToken,
+    exportState,
     canUndo: state.historyPointer > 0,
     canRedo: state.historyPointer < state.history.length - 1,
   };

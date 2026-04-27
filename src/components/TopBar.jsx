@@ -6,8 +6,8 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from './ToastProvider';
 
-const TopBar = ({ encounter, toggleRules }) => {
-  const { state, advanceTurn, undo, redo, canUndo, canRedo, addEntity, importState } = encounter;
+const TopBar = ({ encounter, toggleRules, view, setView }) => {
+  const { state, advanceTurn, undo, redo, canUndo, canRedo, addEntity, importState, exportState } = encounter;
   const { showToast } = useToast();
   const [showExport, setShowExport] = useState(false);
   const fileInputRef = useRef(null);
@@ -98,6 +98,28 @@ const TopBar = ({ encounter, toggleRules }) => {
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
+        {/* Map / List Toggle */}
+        <div className="flex glass rounded-lg overflow-hidden border-white/5 p-1">
+          <button 
+            onClick={() => setView('list')}
+            className={cn(
+              "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all",
+              view === 'list' ? "bg-indigo-600 text-white shadow-lg" : "text-dragon-400 hover:text-dragon-200"
+            )}
+          >
+            List
+          </button>
+          <button 
+            onClick={() => setView('map')}
+            className={cn(
+              "px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all",
+              view === 'map' ? "bg-indigo-600 text-white shadow-lg" : "text-dragon-400 hover:text-dragon-200"
+            )}
+          >
+            Map
+          </button>
+        </div>
+
         {state.alerts.filter(a => a.type !== 'concentration').length > 0 && (
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning-dark/20 border border-warning-base/30 text-warning-light text-xs font-bold animate-pulse">
             <AlertCircle className="w-4 h-4" />
@@ -156,11 +178,11 @@ const TopBar = ({ encounter, toggleRules }) => {
                   <span className="text-[10px] font-bold text-dragon-500 uppercase tracking-widest">Encounter Data</span>
                   <X className="w-3 h-3 cursor-pointer" onClick={() => setShowExport(false)} />
                 </div>
-                <button onClick={() => handleExport('dm')} className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-indigo-400" /> DM Backup
+                <button onClick={exportState} className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-indigo-400" /> Full Backup
                 </button>
                 <button onClick={() => handleExport('player')} className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2">
-                  <Swords className="w-4 h-4 text-rose-400" /> Player View
+                  <Swords className="w-4 h-4 text-rose-400" /> Player View (Text)
                 </button>
                 <div className="h-px bg-white/5 my-1" />
                 <button onClick={handleImportClick} className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2">

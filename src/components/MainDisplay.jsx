@@ -2,8 +2,15 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, X, Info, Swords } from 'lucide-react';
 import InitiativeLedger from './InitiativeLedger';
+import MapDisplay from './MapDisplay';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const MainDisplay = ({ encounter }) => {
+function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
+
+const MainDisplay = ({ encounter, view }) => {
   const { state, clearAlert } = encounter;
 
   return (
@@ -37,8 +44,8 @@ const MainDisplay = ({ encounter }) => {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto scrollbar-custom p-4 md:p-8">
-        <div className="max-w-5xl mx-auto">
+      <div className={cn("flex-1 overflow-y-auto scrollbar-custom p-4 md:p-8", view === 'map' && "flex flex-col")}>
+        <div className={cn("mx-auto", view === 'map' ? "w-full h-full" : "max-w-5xl")}>
           {state.entities.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -53,6 +60,8 @@ const MainDisplay = ({ encounter }) => {
                 Add players and monsters using the controls above to start the encounter.
               </p>
             </motion.div>
+          ) : view === 'map' ? (
+            <MapDisplay encounter={encounter} />
           ) : (
             <InitiativeLedger encounter={encounter} />
           )}
