@@ -274,4 +274,25 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - **Resilience**: Verified multi-tab sync and conflict-free IndexedDB persistence.
 - **Aesthetic**: Locked the "Dragon" dark-glass theme across all 10 feature loops.
 
-**Commit Snapshot**: [Program Delivery v1.0]
+## [2026-04-28] Loop 11: Production Bestiary & Tactical Polish
+**Objective**: Integrate full SRD bestiary and finalize production tactical UI.
+**Reasoning**: A tactical manager is only as good as its data. Moving from placeholder entities to a 334-monster production bestiary required data normalization and UI propagation.
+
+**Files Modified**:
+- [bestiary.json](file:///Users/andrew/Projects/DM_Hub/src/data/bestiary.json): Ingested 334 SRD monsters; repaired legendary resistance data integrity.
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Fixed critical prop-drilling regression for legendary resources.
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Finalized Concentration resolution UI buttons.
+- [TopBar.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx): Implemented Tactical Alert Marquee for header-level combat awareness.
+- [vite.config.js](file:///Users/andrew/Projects/DM_Hub/vite.config.js): Corrected base path for GitHub Pages deployment.
+
+**Production Deliverables**:
+- **Bestiary**: 334 monsters with full stats, traits, and legendary actions.
+- **Data Integrity**: Repaired all legendary creatures (e.g. Dragons, Solar) to have their correct `legendaryResistancesMax` pools.
+- **UI Flow**: Concentration saves can now be resolved with one click from either the card or the header alert.
+- **Deployment**: Live at [westkitty.github.io/DnDex/](https://westkitty.github.io/DnDex/).
+
+**Validation**:
+- Manual: Verified all 334 monsters load correctly; verified legendary spending buttons; verified concentration pass/fail logic.
+- Deployment: Confirmed site is accessible and asset paths are correct.
+
+**Commit Snapshot**: [Production Release v1.1]

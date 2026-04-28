@@ -108,6 +108,41 @@ const EntityCard = ({
 
         {/* Main Body */}
         <div className="flex-1 flex flex-col p-4">
+          {/* Tactical Alerts */}
+          <AnimatePresence mode="popLayout">
+            {alerts.filter(a => a.type === 'concentration').map(alert => (
+              <motion.div 
+                key={alert.id}
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex flex-col gap-2 shadow-lg shadow-amber-500/5"
+              >
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{alert.message}</span>
+                   </div>
+                   <span className="text-[9px] font-bold text-amber-500/60 uppercase">DC {alert.dc}</span>
+                </div>
+                <div className="flex gap-2">
+                   <button 
+                     onClick={() => resolveConcentration(entity.id, true)}
+                     className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all"
+                   >
+                     Pass
+                   </button>
+                   <button 
+                     onClick={() => resolveConcentration(entity.id, false)}
+                     className="flex-1 py-1.5 bg-black/40 hover:bg-rose-500/20 text-rose-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-rose-500/30 transition-all"
+                   >
+                     Fail
+                   </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
               <input 

@@ -210,7 +210,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Blue Dragon",
@@ -294,7 +294,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Brass Dragon",
@@ -380,7 +380,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Bronze Dragon",
@@ -469,7 +469,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Copper Dragon",
@@ -554,7 +554,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Gold Dragon",
@@ -644,7 +644,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Green Dragon",
@@ -740,7 +740,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Red Dragon",
@@ -824,7 +824,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult Silver Dragon",
@@ -910,7 +910,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Adult White Dragon",
@@ -998,7 +998,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Air Elemental",
@@ -1181,7 +1181,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Blue Dragon",
@@ -1265,7 +1265,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Brass Dragon",
@@ -1355,7 +1355,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Bronze Dragon",
@@ -1448,7 +1448,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Copper Dragon",
@@ -1537,7 +1537,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Gold Dragon",
@@ -1631,7 +1631,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Green Dragon",
@@ -1727,7 +1727,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Red Dragon",
@@ -1811,7 +1811,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient Silver Dragon",
@@ -1901,7 +1901,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Ancient White Dragon",
@@ -1989,7 +1989,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Androsphinx",
@@ -11056,7 +11056,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Lion",
@@ -16914,7 +16914,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Thug",
@@ -17465,7 +17465,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Vampire, Bat Form",
@@ -17557,7 +17557,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Vampire, Mist Form",
@@ -17636,7 +17636,7 @@
       }
     ],
     "legendaryActionsMax": 3,
-    "legendaryResistancesMax": 0
+    "legendaryResistancesMax": 3
   },
   {
     "name": "Vampire Spawn",

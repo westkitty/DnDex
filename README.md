@@ -1,16 +1,51 @@
-# React + Vite
+# DM Hub (DnDex) 🐉
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A high-performance, tactical D&D 5e encounter management tool designed for Dungeon Masters. Featuring real-time state synchronization, a full SRD bestiary, and automated combat mechanics.
 
-Currently, two official plugins are available:
+**Live Application**: [https://westkitty.github.io/DnDex/](https://westkitty.github.io/DnDex/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Key Features
 
-## React Compiler
+- **Tactical Bestiary**: 334 SRD monsters with full stats, traits, and legendary resources.
+- **Real-Time Persistence**: Automated IndexedDB saving with `BroadcastChannel` multi-tab synchronization.
+- **Combat Engine**: Automated concentration saves, legendary action tracking, and round/turn sequencing.
+- **Tactical Map**: Canvas-based battle map with grid-snapping tokens and strategic sketching tools.
+- **History Engine**: 50-step undo/redo stack with descriptive audit logging.
+- **PWA Ready**: Offline support and installable as a desktop/mobile app.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Technology Stack
 
-## Expanding the ESLint configuration
+- **Frontend**: React 19, Vite, Tailwind CSS
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
+- **Storage**: IndexedDB (idb-keyval)
+- **Deployment**: GitHub Pages
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📖 Technical Documentation
+
+For a deep dive into the architecture, state model, and development history, see the [Project Bible](Project_Bible.md).
+
+## 🧑‍💻 Local Development
+
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Start Dev Server**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Production Build**:
+   ```bash
+   npm run build
+   ```
+
+4. **Deploy to GitHub Pages**:
+   ```bash
+   npm run deploy
+   ```
+
+---
+Built with ⚔️ by Antigravity for the DM Hub community.

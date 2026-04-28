@@ -88,6 +88,53 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, view, setView }) => {
             </button>
           </div>
         </div>
+
+        <div className="h-10 w-px bg-white/5 mx-2" />
+
+        {/* Alert Marquee */}
+        <div className="flex-1 h-10 overflow-hidden relative">
+           <AnimatePresence mode="wait">
+             {state.alerts.length > 0 ? (
+               <motion.div
+                 key={state.alerts[0].id}
+                 initial={{ opacity: 0, y: 15 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 exit={{ opacity: 0, y: -15 }}
+                 className="h-full flex items-center gap-3 px-4"
+               >
+                  <div className={cn(
+                    "w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]",
+                    state.alerts[0].type === 'warning' || state.alerts[0].type === 'concentration' ? "bg-amber-500" : "bg-indigo-500"
+                  )} />
+                  <span className={cn(
+                    "text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap",
+                    state.alerts[0].type === 'warning' || state.alerts[0].type === 'concentration' ? "text-amber-500" : "text-indigo-400"
+                  )}>
+                    {state.alerts[0].message}
+                  </span>
+                  {state.alerts.length > 1 && (
+                    <span className="text-[8px] font-bold text-slate-700 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full">
+                      +{state.alerts.length - 1} more
+                    </span>
+                  )}
+               </motion.div>
+             ) : (
+               <motion.div
+                 key="idle"
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 className="h-full flex items-center gap-3 px-4 opacity-20"
+               >
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.3em] whitespace-nowrap">
+                    Sensors Nominal • No Alerts
+                  </span>
+               </motion.div>
+             )}
+           </AnimatePresence>
+        </div>
+
+        <div className="h-10 w-px bg-white/5 mx-2" />
       </div>
 
       {/* View & History */}
