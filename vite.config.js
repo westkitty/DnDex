@@ -10,10 +10,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'DM Hub: Encounter Manager',
-        short_name: 'DM Hub',
-        description: 'Premium D&D 5e Encounter Management Canvas App',
-        theme_color: '#0a0a0c',
+        name: 'DnDex Encounter Command Center',
+        short_name: 'DnDex',
+        description: 'DnDex is a local-first D&D 5e encounter command center for Dungeon Masters.',
+        theme_color: '#0f172a',
         icons: [
           {
             src: 'pwa-192x192.png',

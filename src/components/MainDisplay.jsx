@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, X, Info, Swords } from 'lucide-react';
 import InitiativeLedger from './InitiativeLedger';
 import MapDisplay from './MapDisplay';
+import NowActingPanel from './NowActingPanel';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -10,7 +11,7 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const MainDisplay = ({ encounter, view }) => {
+const MainDisplay = ({ encounter, view, activeEntity }) => {
   const { state, clearAlert } = encounter;
 
   return (
@@ -64,7 +65,19 @@ const MainDisplay = ({ encounter, view }) => {
               {view === 'map' ? (
                 <MapDisplay encounter={encounter} />
               ) : (
-                <InitiativeLedger encounter={encounter} />
+                <div className="flex flex-col gap-8">
+                  <NowActingPanel 
+                    round={state.round}
+                    activeEntity={activeEntity}
+                    advanceTurn={encounter.advanceTurn}
+                    applyDamage={encounter.applyDamage}
+                    applyHealing={encounter.applyHealing}
+                    updateEntity={encounter.updateEntity}
+                    spendLegendaryAction={encounter.spendLegendaryAction}
+                    spendLegendaryResistance={encounter.spendLegendaryResistance}
+                  />
+                  <InitiativeLedger encounter={encounter} />
+                </div>
               )}
             </motion.div>
           </AnimatePresence>

@@ -296,3 +296,221 @@ DM Hub is a stateful, real-time interaction-heavy application for managing table
 - Deployment: Confirmed site is accessible and asset paths are correct.
 
 **Commit Snapshot**: [Production Release v1.1]
+
+## [2026-04-28] Loop 12: Build Stabilization & Shell Polish
+**Objective**: Stabilize the production build environment and align app identity with the DnDex brand.
+
+**Reasoning**: Establishing a green build and consistent branding is a prerequisite for the Phase 2 UI/UX overhaul.
+
+**Files Modified**:
+- [index.html](file:///Users/andrew/Projects/DM_Hub/index.html): Updated title and added meta tags for DnDex branding.
+- [vite.config.js](file:///Users/andrew/Projects/DM_Hub/vite.config.js): Aligned PWA manifest name and short_name with DnDex identity.
+
+**Implementation Summary**:
+- Confirmed `npm run build` succeeds in the current environment.
+- Updated shell metadata (Title, Description, Theme Color).
+- Verified PWA manifest consistency.
+
+**Validation**:
+- `npm run build`: Success.
+- `npm run lint`: 18 errors (primarily unused vars in components).
+- Manual checks: Verified tab title and PWA configuration.
+
+**Known Limitations / Follow-up**:
+- Lint errors remain (unused variables in multiple components).
+- Moving to Phase 2: Now Acting Command Panel.
+
+## [2026-04-28] Loop 13: Now Acting Command Panel
+**Objective**: Implement a dedicated, impossible-to-miss command center for the active actor.
+
+**Reasoning**: DMs need immediate access to the current actor's stats and actions without hunting through a long list of cards.
+
+**Files Modified**:
+- [NowActingPanel.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/NowActingPanel.jsx): [NEW] High-fidelity panel for the active entity.
+- [App.jsx](file:///Users/andrew/Projects/DM_Hub/src/App.jsx): Derived `activeEntity` and passed it down.
+- [MainDisplay.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/MainDisplay.jsx): Integrated `NowActingPanel` into the initiative list view.
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Fixed missing `ShieldAlert` import.
+
+**Implementation Summary**:
+- Created a glassmorphism-styled panel that reacts to the active entity's type (Indigo for players, Rose for monsters).
+- Displayed core tactical data: Round, Name, Initiative, AC, DC, and HP.
+- Integrated quick combat actions: Damage, Healing, and End Turn.
+- Added visual support for Legendary Actions and Resistances.
+- Used Framer Motion for smooth transitions on turn changes.
+
+**Validation**:
+- `npm run build`: Success.
+- Manual checks: Verified active entity sync and action functionality.
+
+**Known Limitations / Follow-up**:
+- Damage calculator (Phase 2, Step 9) not yet integrated into the panel.
+- Moving to Phase 2: Turn Transition Moment.
+
+## [2026-04-28] Loop 14: Turn Transition Moment
+**Objective**: Enhance legibility of turn advancement and initiative sequence.
+
+**Reasoning**: Users need clear visual confirmation when the turn changes to avoid confusion during rapid combat.
+
+**Files Modified**:
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Implemented automatic scroll-into-view for the active actor and added ARIA markers.
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Upgraded active actor styling with an ember border and amber glow to match the "Now Acting" identity.
+
+**Implementation Summary**:
+- Integrated `useEffect` and `useRef` to ensure the active combatant is always centered in the viewport.
+- Enhanced the active item visual weight in the initiative list.
+- Improved accessibility with `aria-current`.
+
+**Validation**:
+- Manual checks: Verified smooth scrolling to active actor on turn advance. Verified visual consistency between NowActingPanel and InitiativeLedger.
+
+**Known Limitations / Follow-up**:
+- Scrolling may be jarring if the user is manually inspecting another card; however, center-blocking is generally preferred for tactical focus.
+- Moving to Phase 2: Tactical Alert Stack.
+
+## [2026-04-28] Loop 15: Tactical Alert Stack
+**Objective**: Replace the passive alert marquee with an actionable, high-priority alert center.
+
+**Reasoning**: Alerts like Concentration saves or Lair Actions often get missed in a moving marquee. A dedicated stack ensures they are visible and immediately actionable.
+
+**Files Modified**:
+- [TacticalAlertStack.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/TacticalAlertStack.jsx): [NEW] Dropdown component for managing tactical alerts.
+- [TopBar.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx): Integrated the Alert Stack and removed the old marquee.
+
+**Implementation Summary**:
+- Created a badge-based trigger in the TopBar that shows the count of active alerts.
+- Implemented an actionable dropdown that allows clearing alerts or resolving Concentration saves directly from the header.
+- Used distinct visual styles for Critical (amber) vs. Informational (indigo) alerts.
+
+**Validation**:
+- Manual checks: Verified that adding a Concentration alert (by taking damage while concentrating) correctly triggers the stack. Verified that resolving from the stack clears the alert.
+
+**Known Limitations / Follow-up**:
+- Future alerts (e.g., Lair Actions at Init 20) should be automatically injected into this stack.
+- Moving to Phase 2: Action Ledger Grouping.
+
+## [2026-04-28] Loop 16: Action Ledger Grouping
+**Objective**: Improve combat log readability through logical grouping and filtering.
+
+**Reasoning**: A flat list of logs becomes overwhelming in long encounters. Grouping by round provides a temporal anchor for the DM.
+
+**Files Modified**:
+- [ActionLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/ActionLedger.jsx): Rewritten to support grouping by round and filtering by action type.
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Added `round` metadata to log entries.
+
+**Implementation Summary**:
+- Implemented `useMemo` based grouping logic to aggregate logs by round number.
+- Added a filter bar with categories: All, Damage, Healing, and Status.
+- Enhanced the visual design with round separators and refined typography.
+- Maintained smooth auto-scrolling to the latest entry.
+
+**Validation**:
+- Manual checks: Verified that logs generated in different rounds are correctly separated. Verified that filter chips accurately toggle visibility based on log types.
+
+**Known Limitations / Follow-up**:
+- Filter state is reset on component unmount; could be persisted to state if needed.
+- Moving to Phase 2: Entity Card Density Modes.
+
+## [2026-04-28] Loop 17: Entity Card Density Modes
+**Objective**: Allow the DM to switch between detailed and compact views of the tactical list.
+
+**Reasoning**: In large encounters with many units, detailed cards take up too much vertical space. A compact view allows seeing the whole battlefield at a glance.
+
+**Files Modified**:
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Implemented a `isCompact` mode with a slim, row-based layout and quick-action dropdown.
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Added a density toggle in the header and propagated the state to child components.
+
+**Implementation Summary**:
+- Created a high-performance "Compact Mode" for EntityCard that condenses HP, AC, and Name into a single line.
+- Added a persistence-ready toggle in the Initiative Ledger header.
+- Ensured that even in compact mode, critical information (Concentration, Conditions) is visible via icons.
+
+**Validation**:
+- Manual checks: Verified that toggling density modes works smoothly and preserves state. Verified that compact mode is still actionable via the expansion dropdown.
+
+**Known Limitations / Follow-up**:
+- Compact mode dropdown could be improved with more granular quick-actions.
+- Moving to Phase 2: Boss Mode treatment.
+
+## [2026-04-28] Loop 18: Boss Mode treatment
+**Objective**: Visually distinguish Legendary creatures from standard combatants.
+
+**Reasoning**: Legendary creatures are the centerpieces of major encounters. DMs need clear visual cues that legendary resources (actions/resistances) are available.
+
+**Files Modified**:
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Added specific "Boss Mode" styling, including amber borders, internal glows, and a "Legendary" badge with animated sparkles.
+
+**Implementation Summary**:
+- Condition-based styling: If a creature has max legendary actions or resistances > 0, Boss Mode is activated.
+- Visual enhancements: Added a persistent amber-tinted border and a decorative top-right badge.
+- Maintained consistency with the "Now Acting" amber/gold palette.
+
+**Validation**:
+- Manual checks: Verified that creatures with legendary stats display the new visuals. Verified that standard creatures and players remain unaffected.
+
+**Known Limitations / Follow-up**:
+- Future iterations could include a unique "Boss Theme" sound effect or screen shake on turn start for legendary units.
+- Moving to Phase 3: Tactical Infrastructure.
+
+## [2026-04-28] Loop 19: Bestiary Drawer
+**Objective**: Provide a searchable interface for deploying monsters from the 334-unit data set.
+
+**Reasoning**: Manually typing monster stats is slow. A pre-indexed bestiary allows the DM to build encounters in seconds.
+
+**Files Modified**:
+- [BestiaryDrawer.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/BestiaryDrawer.jsx): Created a slide-out drawer with search, type-filtering, and "Deploy" functionality.
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Integrated the drawer and added an entry point button.
+
+**Implementation Summary**:
+- Leveraged `src/data/bestiary.json` as the source of truth for 334 monsters.
+- Implemented a performance-optimized list with a 50-item rendering cap during search.
+- Added type-based quick filters (Dragon, Undead, etc.).
+- Integrated with `addEntity` in the encounter state to pipe full monster objects into the combat list.
+
+**Validation**:
+- Manual checks: Verified that the drawer slides in correctly. Verified that searching for "Dragon" returns appropriate results. Verified that clicking "+" adds the monster with correct HP/AC to the initiative list.
+
+**Known Limitations / Follow-up**:
+- Future iterations could include multi-select for batch deployment.
+- Moving to Phase 3: Demo Encounter Data.
+
+## [2026-04-28] Loop 20: Demo Encounter Data
+**Objective**: Enable a one-click deployment of a balanced encounter for testing and demonstration.
+
+**Reasoning**: Setting up a test encounter from scratch is tedious. A "Quick-Start" demo allows users to immediately see the tactical value of the app.
+
+**Files Modified**:
+- [demoEncounter.js](file:///Users/andrew/Projects/DM_Hub/src/data/demoEncounter.js): Defined a sample encounter with an Adult Black Dragon and 3 Heroes.
+- [useEncounterState.js](file:///Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js): Added `loadEncounter` action to bulk-load entities and reset the combat state.
+- [InitiativeLedger.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx): Added a "Quick-Start Demo Encounter" button to the empty state.
+
+**Implementation Summary**:
+- Created a robust `loadEncounter` method that handles ID generation and state reset.
+- Populated the demo with a diverse set of entities (Player vs. Boss) to showcase different UI treatments (Boss Mode, Action Ledger grouping).
+- Integrated the entry point into the "Empty Battlefield" view for high discoverability.
+
+**Validation**:
+- Manual checks: Verified that clicking "Quick-Start" clears the empty state and populates the list with the dragon and heroes. Verified that initiative order is preserved.
+
+**Known Limitations / Follow-up**:
+- Future iterations could offer multiple demo scenarios (e.g., Horde vs. Boss).
+- Moving to Phase 3: Damage Preview Calculator.
+
+## [2026-04-28] Loop 21: Damage Preview Calculator
+**Objective**: Provide visual feedback on the impact of damage or healing before applying it.
+
+**Reasoning**: DMs often miscalculate resulting HP or forget resistances. A preview reduces errors and provides a "safety check" before committing changes to the state.
+
+**Files Modified**:
+- [EntityCard.jsx](file:///Users/andrew/Projects/DM_Hub/src/components/EntityCard.jsx): Added a reactive preview system in the HP section.
+
+**Implementation Summary**:
+- Implemented a "Ghost Bar" in the HP progress component that shows the projected health level.
+- Added a numeric preview (Current HP -> Next HP) with color-coding (Rose for damage, Emerald for healing).
+- Leveraged `framer-motion` for smooth entry/exit of the preview indicators.
+
+**Validation**:
+- Manual checks: Verified that typing "20" in the damage input of a 100 HP creature shows a ghost bar at 80% and a "-> 80" label. Verified that deleting the input removes the preview.
+
+**Known Limitations / Follow-up**:
+- Preview does not yet account for damage type resistances/vulnerabilities (calculated in the hook). Adding a "Type Selector" to the preview would be the next step.
+- Moving to Phase 3: Final Handoff.

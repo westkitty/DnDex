@@ -7,10 +7,12 @@ const BestiaryModal = ({ onClose, onAdd }) => {
   const [search, setSearch] = useState('');
   const [selectedMonster, setSelectedMonster] = useState(null);
 
-  const filteredMonsters = bestiaryData.filter(m => 
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.type.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredMonsters = bestiaryData
+    .filter(m => 
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.type.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => b.cr - a.cr);
 
   return (
     <motion.div 

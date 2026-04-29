@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, X, Book, Info, Shield, Swords, Brain, Flame, Skull, 
-  History, Library, Zap, ScrollText, AlertCircle 
+  Search, X, History, ScrollText
 } from 'lucide-react';
 import ActionLedger from './ActionLedger';
 import { clsx } from 'clsx';
@@ -12,7 +11,7 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const RULES_DATABASE = [
+export const RULES_DATABASE = [
   { title: 'Blinded', category: 'Condition', content: 'A blinded creature can’t see and automatically fails any ability check that requires sight. Attack rolls against the creature have advantage, and the creature’s attack rolls have disadvantage.' },
   { title: 'Charmed', category: 'Condition', content: 'A charmed creature can’t attack the charmer or target the charmer with harmful abilities or magical effects. The charmer has advantage on any ability check to interact socially with the creature.' },
   { title: 'Deafened', category: 'Condition', content: 'A deafened creature can’t hear and automatically fails any ability check that requires hearing.' },
@@ -34,10 +33,18 @@ const RULES_DATABASE = [
   { title: 'Concentration', category: 'Rule', content: 'When taking damage, make a Constitution saving throw to maintain concentration. The DC equals 10 or half the damage you take, whichever number is higher.' }
 ];
 
-const RulesPanel = ({ encounter, onClose }) => {
-  const [activeTab, setActiveTab] = useState('ledger'); 
-  const [query, setQuery] = useState('');
+const RulesPanel = ({ encounter, onClose, initialQuery = '' }) => {
+  const [activeTab, setActiveTab] = useState(initialQuery ? 'library' : 'ledger'); 
+  const [query, setQuery] = useState(initialQuery);
   const { state, updateState } = encounter;
+
+  // Sync with initialQuery if it changes (e.g. from Command Palette)
+  React.useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+      setActiveTab('library');
+    }
+  }, [initialQuery]);
 
   const filtered = useMemo(() => {
     if (!query) return RULES_DATABASE;

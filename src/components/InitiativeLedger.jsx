@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Reorder, AnimatePresence, useDragControls, motion } from 'framer-motion';
 import EntityCard from './EntityCard';
-import { Flag, Zap, Swords, UserPlus } from 'lucide-react';
+import BestiaryDrawer from './BestiaryDrawer';
+import GroupDamageSheet from './GroupDamageSheet';
+import { Flag, Swords, UserPlus, LayoutList, StretchVertical, BookOpen, Sparkles, Zap } from 'lucide-react';
+import { DEMO_ENCOUNTER } from '../data/demoEncounter';
 
 const InitiativeItem = ({ 
   entity, index, turnIndex, entities, updateEntity, removeEntity, 
   applyDamage, applyHealing, resolveConcentration, alerts,
-  spendLegendaryAction, spendLegendaryResistance, duplicateEntity
+  spendLegendaryAction, spendLegendaryResistance, duplicateEntity,
+  activeRef, isCompact, isActive, isUpcoming, isUpcomingNext
 }) => {
   const dragControls = useDragControls();
   const entityAlerts = alerts.filter(a => a.entityId === entity.id);
@@ -21,8 +25,14 @@ const InitiativeItem = ({
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="relative"
+      ref={index === turnIndex ? activeRef : null}
+      aria-current={index === turnIndex ? "true" : undefined}
     >
-      <InitiativeItemMarker isActive={index === turnIndex} isUpcoming={index === (turnIndex + 1) % entities.length} />
+      <InitiativeItemMarker 
+        isActive={isActive} 
+        isUpcoming={isUpcoming} 
+        isUpcomingNext={isUpcomingNext} 
+      />
       <EntityCard
         entity={entity}
         isActive={index === turnIndex}
@@ -37,17 +47,19 @@ const InitiativeItem = ({
         alerts={entityAlerts}
         dragControls={dragControls}
         duplicateEntity={duplicateEntity}
+        isCompact={isCompact}
       />
     </Reorder.Item>
   );
 };
 
-const InitiativeItemMarker = ({ isActive, isUpcoming }) => {
-  if (!isActive && !isUpcoming) return null;
+const InitiativeItemMarker = ({ isActive, isUpcoming, isUpcomingNext }) => {
+  if (!isActive && !isUpcoming && !isUpcomingNext) return null;
   return (
     <div className={cn(
-      "absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-8 rounded-full z-10",
-      isActive ? "bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.6)]" : "bg-slate-700"
+      "absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 rounded-full z-10 transition-all duration-500",
+      isActive ? "h-12 bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-pulse" : 
+      isUpcoming ? "h-8 bg-indigo-500/40" : "h-4 bg-slate-700"
     )} />
   );
 };
@@ -59,10 +71,23 @@ const cn = (...inputs) => {
 const InitiativeLedger = ({ encounter }) => {
   const { 
     state, setEntitiesOrder, updateEntity, removeEntity, 
-    applyDamage, applyHealing, resolveConcentration,
-    spendLegendaryAction, spendLegendaryResistance, duplicateEntity, addEntity
+    applyDamage, applyGroupDamage, applyHealing, resolveConcentration,
+    spendLegendaryAction, spendLegendaryResistance, duplicateEntity, addEntity, loadEncounter
   } = encounter;
   const { entities, turnIndex, alerts } = state;
+  const [isCompact, setIsCompact] = useState(false);
+  const [isBestiaryOpen, setIsBestiaryOpen] = useState(false);
+  const [isGroupDamageOpen, setIsGroupDamageOpen] = useState(false);
+  const activeRef = useRef(null);
+
+  useEffect(() => {
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [turnIndex]);
 
   if (entities.length === 0) {
     return (
@@ -83,6 +108,12 @@ const InitiativeLedger = ({ encounter }) => {
             Add Foe
           </button>
         </div>
+        <button 
+          onClick={() => loadEncounter(DEMO_ENCOUNTER)}
+          className="mt-6 flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 hover:text-amber-400 transition-colors"
+        >
+          <Sparkles className="w-3 h-3" /> Quick-Start Demo Encounter
+        </button>
       </motion.div>
     );
   }
@@ -98,7 +129,37 @@ const InitiativeLedger = ({ encounter }) => {
             {entities.length} Units in Deployment
           </span>
         </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsGroupDamageOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded-xl border border-rose-500/20 text-[9px] font-black uppercase tracking-widest transition-all"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Area Damage
+          </button>
+          <button 
+            onClick={() => setIsBestiaryOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl border border-indigo-500/30 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Bestiary
+          </button>
+          <button 
+            onClick={() => setIsCompact(!isCompact)}
+            className="flex items-center gap-2 px-3 py-1.5 glass-dark hover:bg-white/5 rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-200 transition-all"
+          >
+            {isCompact ? <StretchVertical className="w-3.5 h-3.5" /> : <LayoutList className="w-3.5 h-3.5" />}
+            {isCompact ? 'Standard View' : 'Compact View'}
+          </button>
+        </div>
       </div>
+
+      <GroupDamageSheet 
+        isOpen={isGroupDamageOpen}
+        onClose={() => setIsGroupDamageOpen(false)}
+        entities={entities}
+        onApply={applyGroupDamage}
+      />
 
       <Reorder.Group 
         axis="y" 
@@ -108,7 +169,11 @@ const InitiativeLedger = ({ encounter }) => {
       >
         <AnimatePresence initial={false}>
           {entities.map((entity, index) => {
+            const isActive = index === turnIndex;
+            const isUpcoming = index === (turnIndex + 1) % entities.length;
+            const isUpcomingNext = index === (turnIndex + 2) % entities.length || index === (turnIndex + 3) % entities.length;
             const showLairActionMarker = index === 0 && entity.initiative < 20 || (index > 0 && entities[index-1].initiative >= 20 && entity.initiative < 20);
+            const isDead = entity.hp <= 0;
             
             return (
               <React.Fragment key={entity.id}>
@@ -116,7 +181,7 @@ const InitiativeLedger = ({ encounter }) => {
                   <motion.div 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-4 py-3 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10"
+                    className="flex items-center gap-4 py-3 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10 mb-4"
                   >
                     <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
                     <span className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">
@@ -125,21 +190,28 @@ const InitiativeLedger = ({ encounter }) => {
                     <div className="flex-1 h-px bg-gradient-to-r from-rose-500/20 to-transparent" />
                   </motion.div>
                 )}
-                <InitiativeItem
-                  entity={entity}
-                  index={index}
-                  turnIndex={turnIndex}
-                  entities={entities}
-                  updateEntity={(updates) => updateEntity(entity.id, updates)}
-                  removeEntity={() => removeEntity(entity.id)}
-                  applyDamage={(amt, type, group) => applyDamage(entity.id, amt, type, group)}
-                  applyHealing={(amt, group) => applyHealing(entity.id, amt, group)}
-                  resolveConcentration={resolveConcentration}
-                  spendLegendaryAction={spendLegendaryAction}
-                  spendLegendaryResistance={spendLegendaryResistance}
-                  duplicateEntity={() => duplicateEntity(entity.id)}
-                  alerts={alerts}
-                />
+                <div className={cn("transition-opacity duration-500", isDead && !isActive && "opacity-40 grayscale-[0.8]")}>
+                  <InitiativeItem
+                    entity={entity}
+                    index={index}
+                    turnIndex={turnIndex}
+                    entities={entities}
+                    isActive={isActive}
+                    isUpcoming={isUpcoming}
+                    isUpcomingNext={isUpcomingNext}
+                    updateEntity={(updates) => updateEntity(entity.id, updates)}
+                    removeEntity={() => removeEntity(entity.id)}
+                    applyDamage={(amt, type, group) => applyDamage(entity.id, amt, type, group)}
+                    applyHealing={(amt, group) => applyHealing(entity.id, amt, group)}
+                    resolveConcentration={resolveConcentration}
+                    spendLegendaryAction={spendLegendaryAction}
+                    spendLegendaryResistance={spendLegendaryResistance}
+                    duplicateEntity={() => duplicateEntity(entity.id)}
+                    alerts={alerts}
+                    activeRef={activeRef}
+                    isCompact={isCompact}
+                  />
+                </div>
               </React.Fragment>
             );
           })}
@@ -152,6 +224,15 @@ const InitiativeLedger = ({ encounter }) => {
           <Flag className="w-3 h-3" /> End of Deployment
         </div>
       </div>
+
+      <BestiaryDrawer 
+        isOpen={isBestiaryOpen} 
+        onClose={() => setIsBestiaryOpen(false)}
+        onAddEntity={(monster) => {
+          addEntity(monster.isPlayer || false, monster);
+          setIsBestiaryOpen(false);
+        }}
+      />
     </div>
   );
 };

@@ -4,7 +4,6 @@ import { get, set } from 'idb-keyval';
 // --- UTILS ---
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const DAMAGE_TYPES = ['Slashing', 'Piercing', 'Bludgeoning', 'Fire', 'Cold', 'Lightning', 'Thunder', 'Poison', 'Acid', 'Necrotic', 'Radiant', 'Force', 'Psychic'];
 
 const INITIAL_STATE = {
   round: 1,
@@ -19,7 +18,8 @@ const INITIAL_STATE = {
     drawing: [], // Array of { type, points, color, size }
     tokens: {},   // Map of entityId -> { x, y }
     view: { x: 0, y: 0, zoom: 1 }
-  }
+  },
+  snapshots: [] // Array of { id, name, timestamp, state }
 };
 
 const SYNC_CHANNEL = "dm-hub-sync";
@@ -107,6 +107,7 @@ export const useEncounterState = () => {
           id: generateId(), 
           message: messageText, 
           timestamp: new Date().toLocaleTimeString(),
+          round: prev.round,
           type: messageText.includes('damage') ? 'damage' : messageText.includes('heal') ? 'heal' : 'info',
           subType: subType // For rich iconography
         }, ...newLogs].slice(0, 100); // Keep last 100 logs
@@ -188,7 +189,8 @@ export const useEncounterState = () => {
     const merged = {
       ...INITIAL_STATE,
       ...imported,
-      map: { ...INITIAL_STATE.map, ...(imported.map || {}) }
+      map: { ...INITIAL_STATE.map, ...(imported.map || {}) },
+      snapshots: prev.snapshots // Preserve existing snapshots on import
     };
     updateState(merged, "Encounter imported from file");
   }, [updateState]);
@@ -231,10 +233,16 @@ export const useEncounterState = () => {
       legendaryResistancesMax: 0,
     };
 
-    updateState(prev => ({
-      ...prev,
-      entities: [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative)
-    }), `Added ${name} to the initiative.`);
+    updateState(prev => {
+      const activeId = prev.entities[prev.turnIndex]?.id;
+      const newEntities = [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative);
+      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
+      return {
+        ...prev,
+        entities: newEntities,
+        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
+      };
+    }, `Added ${name} to the initiative.`);
   }, [updateState]);
 
   const addEntityFromTemplate = useCallback((template) => {
@@ -276,10 +284,16 @@ export const useEncounterState = () => {
       legendaryActionsList: template.legendaryActions
     };
 
-    updateState(prev => ({
-      ...prev,
-      entities: [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative)
-    }), `Added ${template.name} from bestiary.`);
+    updateState(prev => {
+      const activeId = prev.entities[prev.turnIndex]?.id;
+      const newEntities = [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative);
+      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
+      return {
+        ...prev,
+        entities: newEntities,
+        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
+      };
+    }, `Added ${template.name} from bestiary.`);
   }, [updateState]);
 
   const duplicateEntity = useCallback((id) => {
@@ -313,9 +327,14 @@ export const useEncounterState = () => {
         concentration: false
       };
 
+      const activeId = prev.entities[prev.turnIndex]?.id;
+      const newEntities = [...prev.entities, cloned].sort((a, b) => b.initiative - a.initiative);
+      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
+
       return {
         ...prev,
-        entities: [...prev.entities, cloned].sort((a, b) => b.initiative - a.initiative)
+        entities: newEntities,
+        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
       };
     }, (prev) => {
       const entity = prev.entities.find(e => e.id === id);
@@ -364,11 +383,15 @@ export const useEncounterState = () => {
 
   const removeEntity = useCallback((id) => {
     updateState(prev => {
+      const activeId = prev.entities[prev.turnIndex]?.id;
+      const newEntities = prev.entities.filter(e => e.id !== id);
+      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
       const newTokens = { ...prev.map.tokens };
       delete newTokens[id];
       return {
         ...prev,
-        entities: prev.entities.filter(e => e.id !== id),
+        entities: newEntities,
+        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex,
         map: { ...prev.map, tokens: newTokens }
       };
     }, `Removed from combat.`);
@@ -459,6 +482,50 @@ export const useEncounterState = () => {
     }, type);
   }, [updateState]);
 
+  const applyGroupDamage = useCallback((damageMap, damageType, label) => {
+    updateState(prev => {
+      let newAlerts = [...prev.alerts];
+      const newEntities = prev.entities.map(e => {
+        const damageAmount = damageMap[e.id];
+        if (damageAmount !== undefined && damageAmount > 0) {
+          let newHp = e.hp;
+          let newTempHp = e.tempHp;
+
+          if (newTempHp > 0) {
+            const absorbed = Math.min(newTempHp, damageAmount);
+            newTempHp -= absorbed;
+            const remaining = damageAmount - absorbed;
+            newHp = Math.max(0, newHp - remaining);
+          } else {
+            newHp = Math.max(0, newHp - damageAmount);
+          }
+
+          // Concentration check
+          if (e.concentration && newHp > 0) {
+            const dc = Math.max(10, Math.floor(damageAmount / 2));
+            newAlerts.push({
+              id: generateId(),
+              entityId: e.id,
+              dc: dc,
+              message: `${e.name} must make a DC ${dc} Concentration save!`,
+              type: 'concentration'
+            });
+          }
+
+          return { ...e, hp: newHp, tempHp: newTempHp };
+        }
+        return e;
+      });
+
+      return {
+        ...prev,
+        entities: newEntities,
+        alerts: newAlerts.slice(0, 10),
+        logs: (prev.logs || []).slice(0, 100)
+      };
+    }, label || `Group damage applied.`);
+  }, [updateState]);
+
   const resolveConcentration = useCallback((alertId, success) => {
     setState(prev => {
       const alert = prev.alerts.find(a => a.id === alertId);
@@ -491,16 +558,17 @@ export const useEncounterState = () => {
       };
 
       // We manually update history here since we aren't using updateState
-      const newHistory = prev.history.slice(0, prev.historyPointer + 1);
-      const newLogs = [logEntry, ...(prev.logs || [])].slice(0, 50);
+      const newLogs = [logEntry, ...(prev.logs || [])].slice(0, 100);
       
       const finalState = { ...newState, logs: newLogs };
+      const newHistory = prev.history.slice(0, prev.historyPointer + 1);
       newHistory.push({ ...finalState, note: note });
 
       return {
         ...finalState,
         history: newHistory,
-        historyPointer: newHistory.length - 1
+        historyPointer: newHistory.length - 1,
+        isHydrated: true
       };
     });
   }, []);
@@ -594,6 +662,42 @@ export const useEncounterState = () => {
       }
     }), isFinal ? `Moved token.` : null, null, !isFinal);
   }, [updateState]);
+
+  const saveSnapshot = useCallback((name) => {
+    updateState(prev => {
+      const { history: _, ...cleanState } = prev;
+      const newSnapshot = {
+        id: generateId(),
+        name: name || `Snapshot ${prev.snapshots.length + 1}`,
+        timestamp: new Date().toLocaleString(),
+        state: cleanState
+      };
+      return {
+        ...prev,
+        snapshots: [newSnapshot, ...prev.snapshots].slice(0, 10)
+      };
+    }, "Tactical snapshot created.");
+  }, [updateState]);
+
+  const loadSnapshot = useCallback((id) => {
+    updateState(prev => {
+      const snapshot = prev.snapshots.find(s => s.id === id);
+      if (!snapshot) return prev;
+      return {
+        ...prev,
+        ...snapshot.state,
+        snapshots: prev.snapshots // Keep snapshots
+      };
+    }, "Reverted to tactical snapshot.");
+  }, [updateState]);
+
+  const deleteSnapshot = useCallback((id) => {
+    updateState(prev => ({
+      ...prev,
+      snapshots: prev.snapshots.filter(s => s.id !== id)
+    }), "Snapshot deleted.");
+  }, [updateState]);
+
   return {
     state,
     addEntity,
@@ -601,6 +705,7 @@ export const useEncounterState = () => {
     removeEntity,
     advanceTurn,
     applyDamage,
+    applyGroupDamage,
     applyHealing,
     addAlert,
     clearAlert,
@@ -615,8 +720,31 @@ export const useEncounterState = () => {
     duplicateEntity,
     updateMap,
     updateToken,
+    saveSnapshot,
+    loadSnapshot,
+    deleteSnapshot,
     exportState,
     addEntityFromTemplate,
+    loadEncounter: (encounterData) => {
+      const entitiesWithIds = encounterData.entities.map(e => ({
+        ...e,
+        id: generateId(),
+        conditions: e.conditions || [],
+        effects: e.effects || [],
+        concentration: e.concentration || false,
+        tempHp: e.tempHp || 0,
+        legendaryActions: e.legendaryActionsMax || 0,
+        legendaryResistances: e.legendaryResistancesMax || 0
+      }));
+      updateState(prev => ({
+        ...prev,
+        entities: entitiesWithIds.sort((a, b) => b.initiative - a.initiative),
+        turnIndex: 0,
+        round: 1,
+        alerts: [],
+        logs: []
+      }), `Loaded demo encounter: ${encounterData.name}`);
+    },
     canUndo: state.historyPointer > 0,
     canRedo: state.historyPointer < state.history.length - 1,
   };

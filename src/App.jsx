@@ -4,6 +4,8 @@ import MainDisplay from './components/MainDisplay';
 import TopBar from './components/TopBar';
 import RulesPanel from './components/RulesPanel';
 import BestiaryModal from './components/BestiaryModal';
+import CommandPalette from './components/CommandPalette';
+import SnapshotDrawer from './components/SnapshotDrawer';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastProvider, useToast } from './components/ToastProvider';
 import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -20,6 +22,9 @@ function AppContent() {
   const { showToast } = useToast();
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isBestiaryOpen, setIsBestiaryOpen] = useState(false);
+  const [isSnapshotsOpen, setIsSnapshotsOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [rulesQuery, setRulesQuery] = useState('');
   const [view, setView] = useState('list'); // 'list' | 'map'
 
   // Handle Sync Conflict
@@ -28,6 +33,21 @@ function AppContent() {
       showToast("Sync Conflict: This tab has outdated data. Please refresh to sync with other windows.", "warning", 10000);
     }
   }, [syncStatus, showToast]);
+
+  const { state } = encounter;
+  const activeEntity = state.entities?.[state.turnIndex] ?? null;
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-[var(--color-obsidian-950)] text-slate-100 selection:bg-indigo-500/30 overflow-hidden font-sans antialiased">
@@ -41,16 +61,24 @@ function AppContent() {
         encounter={encounter} 
         toggleRules={() => setIsRulesOpen(!isRulesOpen)} 
         toggleBestiary={() => setIsBestiaryOpen(!isBestiaryOpen)}
+        toggleSnapshots={() => setIsSnapshotsOpen(!isSnapshotsOpen)}
         view={view}
         setView={setView}
       />
       
       <main className="flex flex-1 overflow-hidden relative z-10">
-        <MainDisplay encounter={encounter} view={view} />
+        <MainDisplay encounter={encounter} view={view} activeEntity={activeEntity} />
         
         <AnimatePresence>
           {isRulesOpen && (
-            <RulesPanel encounter={encounter} onClose={() => setIsRulesOpen(false)} />
+            <RulesPanel 
+              encounter={encounter} 
+              onClose={() => {
+                setIsRulesOpen(false);
+                setRulesQuery('');
+              }} 
+              initialQuery={rulesQuery}
+            />
           )}
           {isBestiaryOpen && (
             <BestiaryModal 
@@ -62,11 +90,32 @@ function AppContent() {
               }}
             />
           )}
+          {isSnapshotsOpen && (
+            <SnapshotDrawer 
+              isOpen={isSnapshotsOpen}
+              onClose={() => setIsSnapshotsOpen(false)}
+              state={state}
+              saveSnapshot={encounter.saveSnapshot}
+              loadSnapshot={encounter.loadSnapshot}
+              deleteSnapshot={encounter.deleteSnapshot}
+            />
+          )}
+          <CommandPalette 
+            isOpen={isCommandPaletteOpen}
+            onClose={() => setIsCommandPaletteOpen(false)}
+            encounter={encounter}
+            setView={setView}
+            toggleBestiary={() => setIsBestiaryOpen(true)}
+            toggleRules={(q) => {
+              setRulesQuery(q || '');
+              setIsRulesOpen(true);
+            }}
+          />
         </AnimatePresence>
       </main>
 
-      {/* Persistence HUD */}
-      <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
+      {/* Persistence HUD - Moved to bottom-left to avoid overlaps */}
+      <div className="fixed bottom-6 left-6 z-50 pointer-events-none">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
