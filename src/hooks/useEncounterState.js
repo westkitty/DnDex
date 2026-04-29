@@ -17,7 +17,16 @@ const INITIAL_STATE = {
   map: {
     drawing: [], // Array of { type, points, color, size }
     tokens: {},   // Map of entityId -> { x, y }
-    view: { x: 0, y: 0, zoom: 1 }
+    view: { x: 0, y: 0, zoom: 1 },
+    terrain: {},  // Map of "x,y" -> assetId
+    objects: [],  // Array of { id, assetId, x, y, scale, rotation }
+    config: { 
+      gridVisible: true, 
+      gridSize: 50,
+      width: 30, 
+      height: 30,
+      baseTile: 'grass_lush'
+    }
   },
   snapshots: [] // Array of { id, name, timestamp, state }
 };
@@ -35,8 +44,8 @@ export const useEncounterState = () => {
       const remoteState = event.data;
       setState(prev => {
         if (remoteState.lastUpdated > prev.lastUpdated) {
-          // Sync history and logs as well
-          return { ...remoteState, isHydrated: true };
+          // Sync state while preserving local history/isHydrated
+          return { ...prev, ...remoteState, isHydrated: true };
         }
         return prev;
       });
@@ -186,13 +195,12 @@ export const useEncounterState = () => {
 
   const importState = useCallback((imported) => {
     if (!imported.entities) return;
-    const merged = {
+    updateState((prev) => ({
       ...INITIAL_STATE,
       ...imported,
       map: { ...INITIAL_STATE.map, ...(imported.map || {}) },
       snapshots: prev.snapshots // Preserve existing snapshots on import
-    };
-    updateState(merged, "Encounter imported from file");
+    }), "Encounter imported from file");
   }, [updateState]);
 
   const exportState = useCallback(() => {
@@ -698,6 +706,51 @@ export const useEncounterState = () => {
     }), "Snapshot deleted.");
   }, [updateState]);
 
+  const placeTile = useCallback((x, y, assetId) => {
+    updateMap(map => ({
+      ...map,
+      terrain: { ...map.terrain, [`${x},${y}`]: assetId }
+    }));
+  }, [updateMap]);
+
+  const placeObject = useCallback((assetId, x, y, scale = 1, rotation = 0) => {
+    updateMap(map => ({
+      ...map,
+      objects: [...map.objects, { id: generateId(), assetId, x, y, scale, rotation }]
+    }));
+  }, [updateMap]);
+
+  const removeObject = useCallback((objectId) => {
+    updateMap(map => ({
+      ...map,
+      objects: map.objects.filter(obj => obj.id !== objectId)
+    }));
+  }, [updateMap]);
+
+  const applyTemplate = useCallback((template) => {
+    updateMap(map => ({
+      ...map,
+      terrain: {}, // Reset terrain
+      objects: template.decorations.map(d => ({ ...d, id: generateId() })),
+      config: { 
+        ...map.config, 
+        width: template.dimensions.width, 
+        height: template.dimensions.height,
+        baseTile: template.baseTile
+      }
+    }));
+  }, [updateMap]);
+
+  const clearMap = useCallback(() => {
+    updateMap(map => ({
+      ...map,
+      terrain: {},
+      objects: [],
+      drawing: [],
+      tokens: {}
+    }));
+  }, [updateMap]);
+
   return {
     state,
     addEntity,
@@ -725,6 +778,11 @@ export const useEncounterState = () => {
     deleteSnapshot,
     exportState,
     addEntityFromTemplate,
+    placeTile,
+    placeObject,
+    removeObject,
+    applyTemplate,
+    clearMap,
     loadEncounter: (encounterData) => {
       const entitiesWithIds = encounterData.entities.map(e => ({
         ...e,
@@ -746,6 +804,6 @@ export const useEncounterState = () => {
       }), `Loaded demo encounter: ${encounterData.name}`);
     },
     canUndo: state.historyPointer > 0,
-    canRedo: state.historyPointer < state.history.length - 1,
+    canRedo: !!state.history && state.historyPointer < state.history.length - 1,
   };
 };

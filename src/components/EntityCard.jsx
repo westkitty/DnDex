@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Heart, Shield, Info, MoreHorizontal, Skull, Zap, 
+  Shield, MoreHorizontal, 
   Brain, Trash2, GripVertical, 
-  Eye, EyeOff, Minus, Plus, Settings, ScrollText, Target, Copy, BookOpen, ShieldAlert, Sparkles
+  Eye, EyeOff, Minus, Plus, Settings, BookOpen, ShieldAlert, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import DamageCalculator from './DamageCalculator';
-import ConditionPalette from './ConditionPalette';
-import { CONDITIONS, DAMAGE_TYPES, CONDITION_METADATA } from '../utils/combat';
+import { CONDITION_METADATA } from '../utils/combat';
 import * as LucideIcons from 'lucide-react';
 
-function cn(...inputs) {
-  return twMerge(clsx(inputs));
-}
+// Sub-components
+import EntityStats from './entity-card/EntityStats';
+import EntityHP from './entity-card/EntityHP';
+import EntityConditions from './entity-card/EntityConditions';
+import EntityLegendaryResources from './entity-card/EntityLegendaryResources';
+import EntityActions from './entity-card/EntityActions';
+import EntityReference from './entity-card/EntityReference';
+import { cn } from './entity-card/entityCardUtils';
 
 const EntityCard = ({ 
   entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing, 
@@ -149,8 +152,6 @@ const EntityCard = ({
           </div>
         </div>
 
-        {/* Action Dropdown Portal - for compact mode we just reuse the expanded console but absolute positioned or similar? 
-            Actually, let's just allow expansion even in compact mode. */}
         <AnimatePresence>
           {expanded && (
             <motion.div
@@ -159,7 +160,6 @@ const EntityCard = ({
               exit={{ height: 0, opacity: 0 }}
               className="absolute top-full left-0 right-0 z-50 mt-2 overflow-hidden bg-[var(--color-obsidian-800)] border border-white/10 rounded-2xl shadow-2xl p-4"
             >
-               {/* Quick damage for compact mode */}
                <div className="flex items-center gap-2 mb-4 p-2 bg-black/20 rounded-xl">
                  <input 
                    type="number"
@@ -228,26 +228,13 @@ const EntityCard = ({
       )}
 
       <div className="flex flex-col md:flex-row items-stretch min-h-[100px]">
-        {/* Initiative Tab */}
-        <div className={cn(
-          "flex flex-col items-center justify-center gap-2 p-4 border-r border-white/5",
-          isActive ? "bg-indigo-500/10" : "bg-black/20"
-        )}>
-          <div 
-            className="cursor-grab text-slate-600 hover:text-indigo-400 active:cursor-grabbing p-1 transition-colors"
-            onPointerDown={(e) => dragControls.start(e)}
-          >
-            <GripVertical className="w-4 h-4" />
-          </div>
-          <div className="relative">
-            <input 
-              type="number"
-              value={entity.initiative}
-              onChange={(e) => updateEntity({ initiative: parseInt(e.target.value) || 0 })}
-              className="w-10 h-10 glass-dark rounded-xl text-center font-mono font-bold text-lg text-indigo-400 outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all"
-            />
-          </div>
-        </div>
+        <EntityStats 
+          entity={entity}
+          isActive={isActive}
+          updateEntity={updateEntity}
+          dragControls={dragControls}
+          isBoss={isBoss}
+        />
 
         {/* Main Body */}
         <div className="flex-1 flex flex-col p-4">
@@ -286,154 +273,16 @@ const EntityCard = ({
             ))}
           </AnimatePresence>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3">
-              <input 
-                value={entity.name}
-                onChange={(e) => updateEntity({ name: e.target.value })}
-                className={cn(
-                  "bg-transparent font-serif font-bold text-xl outline-none border-b border-transparent focus:border-indigo-500/30 transition-all",
-                  entity.isPlayer ? "text-indigo-100" : "text-rose-100"
-                )}
-              />
-              <button 
-                onClick={() => updateEntity({ hidden: !entity.hidden })}
-                className={cn(
-                  "p-1 rounded-lg transition-colors",
-                  entity.hidden ? "text-amber-500 bg-amber-500/10" : "text-slate-500 hover:text-slate-200"
-                )}
-              >
-                {entity.hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-3 px-3 py-1.5 glass-dark rounded-xl border border-white/5">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-indigo-400" />
-                  <input 
-                    type="number"
-                    value={entity.ac || 10}
-                    onChange={(e) => updateEntity({ ac: parseInt(e.target.value) || 0 })}
-                    className="w-5 bg-transparent text-xs font-bold text-slate-200 outline-none"
-                  />
-                </div>
-                {!entity.isPlayer && (
-                  <div className="flex items-center gap-1.5 border-l border-white/10 pl-3">
-                    <Target className="w-3.5 h-3.5 text-rose-400" />
-                    <input 
-                      type="number"
-                      value={entity.dc || 10}
-                      onChange={(e) => updateEntity({ dc: parseInt(e.target.value) || 0 })}
-                      className="w-5 bg-transparent text-xs font-bold text-slate-200 outline-none"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* HP System */}
-          <div className="flex flex-col lg:flex-row items-center gap-6">
-            <div className="flex-1 w-full relative">
-              <div className="flex justify-between items-end mb-2 px-1">
-                <div className="flex items-baseline gap-1">
-                  <span className={cn(
-                    "text-xl font-bold font-mono",
-                    isDead ? "text-slate-600" : (isBloodied ? "text-rose-400" : "text-emerald-400")
-                  )}>
-                    {entity.hp}
-                  </span>
-                  {dmgInput && !isNaN(parseInt(dmgInput)) && (
-                    <motion.span 
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-sm font-bold text-slate-500 flex items-center gap-1"
-                    >
-                      <ChevronRight className="w-3 h-3" />
-                      <span className={cn(
-                        "font-mono",
-                        parseInt(dmgInput) > 0 ? "text-rose-500" : "text-emerald-500"
-                      )}>
-                        {Math.max(0, entity.hp - (parseInt(dmgInput) || 0))}
-                      </span>
-                    </motion.span>
-                  )}
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tighter">/ {entity.maxHp} HP</span>
-                </div>
-                {entity.tempHp > 0 && (
-                  <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
-                    +{entity.tempHp} TMP
-                  </span>
-                )}
-              </div>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
-                {/* Preview Ghost Bar */}
-                {dmgInput && !isNaN(parseInt(dmgInput)) && (
-                  <div 
-                    className="absolute inset-0 bg-white/10"
-                    style={{ 
-                      width: `${Math.min(100, Math.max(0, (entity.hp - parseInt(dmgInput)) / entity.maxHp * 100))}%`,
-                      transition: 'width 0.2s ease-out'
-                    }}
-                  />
-                )}
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${hpPercent}%` }}
-                  className={cn(
-                    "h-full rounded-full relative",
-                    isDead ? "bg-slate-800" : (isBloodied ? "bg-rose-500" : "bg-emerald-500")
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Quick Action Bar - Simple version for speed */}
-            <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-white/5 shadow-inner">
-              <input 
-                type="number"
-                placeholder="0"
-                value={dmgInput}
-                onChange={(e) => setDmgInput(e.target.value)}
-                className="w-12 h-9 bg-transparent text-center font-bold text-sm outline-none placeholder:text-slate-700"
-              />
-              <div className="flex gap-1 pr-1 border-r border-white/5 mr-1">
-                <button 
-                  onClick={() => setDmgInput(Math.floor(parseInt(dmgInput) / 2 || 0).toString())} 
-                  className="px-1.5 py-0.5 text-[8px] font-black text-slate-500 hover:text-indigo-400 transition-colors uppercase"
-                >
-                  1/2
-                </button>
-                <button 
-                  onClick={() => setDmgInput((parseInt(dmgInput) * 2 || 0).toString())} 
-                  className="px-1.5 py-0.5 text-[8px] font-black text-slate-500 hover:text-rose-400 transition-colors uppercase"
-                >
-                  2x
-                </button>
-              </div>
-              <div className="flex gap-1">
-                <button 
-                  onClick={() => {
-                    applyDamage(parseInt(dmgInput) || 0, 'Slashing');
-                    setDmgInput('');
-                  }} 
-                  className="p-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg transition-all active:scale-90"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => {
-                    applyHealing(parseInt(dmgInput) || 0);
-                    setDmgInput('');
-                  }} 
-                  className="p-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg transition-all active:scale-90"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <EntityHP 
+            entity={entity}
+            isBloodied={isBloodied}
+            isDead={isDead}
+            hpPercent={hpPercent}
+            dmgInput={dmgInput}
+            setDmgInput={setDmgInput}
+            applyDamage={applyDamage}
+            applyHealing={applyHealing}
+          />
         </div>
 
         {/* Action Column */}
@@ -472,142 +321,25 @@ const EntityCard = ({
             className="overflow-hidden bg-black/40 border-t border-white/5"
           >
             <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Skull className="w-3 h-3" /> Status & Effects
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  <button 
-                    onClick={() => updateEntity({ concentration: !entity.concentration })}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-2 transition-all border",
-                      entity.concentration ? "bg-amber-500 text-black border-amber-400" : "glass-dark text-slate-400 border-white/5 hover:border-white/10"
-                    )}
-                  >
-                    <Brain className="w-3.5 h-3.5" /> Concentration
-                  </button>
-                </div>
+              <EntityConditions 
+                entity={entity}
+                updateEntity={updateEntity}
+              />
 
-                <div className="pt-2">
-                  <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2 px-2">
-                    <Shield className="w-3 h-3" /> Conditions Palette
-                  </h4>
-                  <ConditionPalette 
-                    activeConditions={entity.conditions}
-                    onToggleCondition={(condition) => {
-                      const next = entity.conditions.includes(condition) 
-                        ? entity.conditions.filter(c => c !== condition) 
-                        : [...entity.conditions, condition];
-                      updateEntity({ conditions: next });
-                    }}
-                  />
-                </div>
-              </div>
+              <EntityActions 
+                entity={entity}
+                applyDamage={applyDamage}
+                applyHealing={applyHealing}
+              />
 
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Zap className="w-3 h-3" /> Tactical Calculator
-                </h4>
-                <DamageCalculator 
-                  currentHp={entity.hp}
-                  maxHp={entity.maxHp}
-                  onApplyDamage={(amt, type) => applyDamage(amt, type)}
-                  onApplyHealing={(amt) => applyHealing(amt)}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Zap className="w-3 h-3" /> Legendary Resources
-                </h4>
-                <div className="flex flex-col gap-3">
-                  {entity.legendaryActionsMax > 0 && (
-                    <div className="p-3 glass-dark rounded-xl border border-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Legendary Actions</span>
-                        <span className="text-[9px] font-mono font-bold text-indigo-400">{entity.legendaryActions} / {entity.legendaryActionsMax}</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        {Array.from({ length: entity.legendaryActionsMax }).map((_, i) => (
-                          <button
-                            key={i}
-                            onClick={() => i < entity.legendaryActions && spendLegendaryAction(entity.id)}
-                            className={cn(
-                              "flex-1 h-2 rounded-full border transition-all duration-500",
-                              i < entity.legendaryActions 
-                                ? "bg-gradient-to-r from-indigo-600 to-indigo-400 border-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.3)]" 
-                                : "bg-black/40 border-white/5 opacity-20"
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {entity.legendaryResistancesMax > 0 && (
-                    <div className="p-3 glass-dark rounded-xl border border-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Legendary Resistance</span>
-                        <span className="text-[9px] font-mono font-bold text-rose-400">{entity.legendaryResistances} / {entity.legendaryResistancesMax}</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        {Array.from({ length: entity.legendaryResistancesMax }).map((_, i) => (
-                          <button
-                            key={i}
-                            onClick={() => i < entity.legendaryResistances && spendLegendaryResistance(entity.id)}
-                            className={cn(
-                              "flex-1 h-2 rounded-full border transition-all duration-500",
-                              i < entity.legendaryResistances 
-                                ? "bg-gradient-to-r from-rose-600 to-rose-400 border-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.3)]" 
-                                : "bg-black/40 border-white/5 opacity-20"
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <button 
-                    onClick={() => updateEntity({ hasLairAction: !entity.hasLairAction })}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-all",
-                      entity.hasLairAction ? "bg-rose-500/10 border-rose-500/30 text-rose-400" : "glass-dark border-white/5 text-slate-500"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Flag className="w-3.5 h-3.5" />
-                      <span className="text-[9px] font-black uppercase tracking-widest">Lair Actions</span>
-                    </div>
-                    <div className={cn(
-                      "w-8 h-4 rounded-full relative transition-colors",
-                      entity.hasLairAction ? "bg-rose-500" : "bg-slate-800"
-                    )}>
-                      <div className={cn(
-                        "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all",
-                        entity.hasLairAction ? "left-4.5" : "left-0.5"
-                      )} />
-                    </div>
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-4 mt-6 pt-6 border-t border-white/5">
-                  <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                    <ScrollText className="w-3 h-3" /> Maintenance
-                  </h4>
-                  <div className="flex flex-col gap-2">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); duplicateEntity(); }}
-                      className="flex items-center justify-center gap-2 py-2 glass-dark hover:bg-white/5 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-white/5 transition-all"
-                    >
-                      <Copy className="w-3.5 h-3.5 text-indigo-400" /> Clone Entity
-                    </button>
-                    <button 
-                      onClick={removeEntity}
-                      className="flex items-center justify-center gap-2 py-2 glass-dark hover:bg-rose-500/10 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-white/5 text-rose-400 transition-all"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Purge Entry
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <EntityLegendaryResources 
+                entity={entity}
+                updateEntity={updateEntity}
+                spendLegendaryAction={spendLegendaryAction}
+                spendLegendaryResistance={spendLegendaryResistance}
+                duplicateEntity={duplicateEntity}
+                removeEntity={removeEntity}
+              />
             </div>
           </motion.div>
         )}
@@ -621,51 +353,7 @@ const EntityCard = ({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden bg-black/60 border-t border-amber-500/20"
           >
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-6 gap-2 bg-black/40 p-4 rounded-xl border border-white/5">
-                {entity.stats && Object.entries(entity.stats).map(([stat, val]) => (
-                  <div key={stat} className="flex flex-col items-center">
-                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat}</span>
-                    <span className="text-sm font-bold text-slate-100">{val}</span>
-                    <span className="text-[9px] text-slate-400 font-mono">({Math.floor((val-10)/2) >= 0 ? '+' : ''}{Math.floor((val-10)/2)})</span>
-                  </div>
-                ))}
-              </div>
-
-              {entity.traits?.length > 0 && (
-                <div className="space-y-2">
-                  <h5 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Special Traits</h5>
-                  {entity.traits.map(t => (
-                    <div key={t.name} className="text-xs leading-relaxed">
-                      <span className="font-bold text-slate-200 italic mr-2">{t.name}.</span>
-                      <span className="text-slate-400">{t.description}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <h5 className="text-[9px] font-black text-rose-400 uppercase tracking-[0.2em]">Actions</h5>
-                {entity.actions.map(a => (
-                  <div key={a.name} className="text-xs leading-relaxed">
-                    <span className="font-bold text-slate-200 italic mr-2">{a.name}.</span>
-                    <span className="text-slate-400">{a.description}</span>
-                  </div>
-                ))}
-              </div>
-
-              {entity.legendaryActionsList?.length > 0 && (
-                <div className="space-y-2">
-                  <h5 className="text-[9px] font-black text-amber-400 uppercase tracking-[0.2em]">Legendary Actions</h5>
-                  {entity.legendaryActionsList.map(a => (
-                    <div key={a.name} className="text-xs leading-relaxed">
-                      <span className="font-bold text-slate-200 italic mr-2">{a.name}.</span>
-                      <span className="text-slate-400">{a.description}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <EntityReference entity={entity} />
           </motion.div>
         )}
       </AnimatePresence>

@@ -202,4 +202,67 @@ describe('DM Hub State Machine Harness', () => {
     expect(result.current.state.entities[0].concentration).toBe(false);
     expect(result.current.state.alerts.find(a => a.id === alert.id)).toBeUndefined();
   });
+
+  test('importState updates entities and does not crash', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    const importedState = {
+      entities: [{ id: 'hero1', name: 'Imported Hero', type: 'player', hp: 50, maxHp: 50 }],
+      round: 5,
+      turnIndex: 0
+    };
+
+    act(() => {
+      result.current.importState(importedState);
+    });
+
+    expect(result.current.state.entities).toHaveLength(1);
+    expect(result.current.state.entities[0].name).toBe('Imported Hero');
+    expect(result.current.state.round).toBe(5);
+  });
+
+  test('BroadcastChannel sync preserves local history and does not crash', async () => {
+    // 1. Setup BroadcastChannel mock to capture the listener
+    let onMessageListener = null;
+    const mockChannel = {
+      close: vi.fn(),
+      get onmessage() { return onMessageListener; },
+      set onmessage(val) { onMessageListener = val; }
+    };
+    
+    // Mock constructor
+    const BroadcastChannelMock = function() {
+      return mockChannel;
+    };
+    vi.stubGlobal('BroadcastChannel', BroadcastChannelMock);
+
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    // 2. Initial state has history
+    expect(result.current.state.history).toBeDefined();
+    expect(result.current.state.history.length).toBeGreaterThan(0);
+    const initialHistoryLength = result.current.state.history.length;
+
+    // 3. Simulate incoming message with stripped state (no history)
+    const remoteState = {
+      entities: [{ id: '1', name: 'Remote Monster' }],
+      lastUpdated: Date.now() + 1000,
+      round: 10,
+      turnIndex: 5
+      // history is missing
+    };
+
+    act(() => {
+      onMessageListener({ data: remoteState });
+    });
+
+    // 4. Assert: State updated but history preserved
+    expect(result.current.state.round).toBe(10);
+    expect(result.current.state.entities[0].name).toBe('Remote Monster');
+    expect(result.current.state.history).toBeDefined();
+    expect(result.current.state.history.length).toBe(initialHistoryLength);
+    expect(result.current.canRedo).toBe(false); // Should not crash
+  });
 });

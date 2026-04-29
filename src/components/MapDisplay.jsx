@@ -8,42 +8,130 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+import { MAP_TEMPLATES } from '../data/MapTemplates';
+
 const GRID_SIZE = 50;
 
+const BASE = import.meta.env.BASE_URL || '/';
+
+const ASSETS = {
+  // Hero mappings to Kenney tiles (High quality replacements)
+  grass_lush: `${BASE}assets/tiles/rpgTile018.png`,
+  dirt_path: `${BASE}assets/tiles/rpgTile001.png`,
+  dungeon_stone: `${BASE}assets/tiles/rpgTile163.png`,
+  water_deep: `${BASE}assets/tiles/rpgTile029.png`,
+  stone_wall: `${BASE}assets/tiles/rpgTile162.png`,
+  wood_floor: `${BASE}assets/tiles/rpgTile039.png`,
+  tree_oak: `${BASE}assets/tiles/rpgTile208.png`,
+  rock_mossy: `${BASE}assets/tiles/rpgTile151.png`,
+  bush_green: `${BASE}assets/tiles/rpgTile201.png`,
+  stone_pillar: `${BASE}assets/tiles/rpgTile153.png`,
+  ornate_rug: `${BASE}assets/tiles/rpgTile114.png`,
+  wood_table: `${BASE}assets/tiles/rpgTile048.png`,
+  wood_bar: `${BASE}assets/tiles/rpgTile050.png`,
+  wood_chair: `${BASE}assets/tiles/rpgTile049.png`,
+};
+
+// Dynamically inject all 228 Kenney tiles into the registry
+for (let i = 0; i <= 228; i++) {
+  const id = `kenney_${i.toString().padStart(3, '0')}`;
+  if (!ASSETS[id]) {
+    ASSETS[id] = `${BASE}assets/tiles/rpgTile${i.toString().padStart(3, '0')}.png`;
+  }
+}
+
 const MapDisplay = ({ encounter }) => {
-  const { state, updateMap, updateToken } = encounter;
+  const { state, updateMap, updateToken, placeTile, placeObject, applyTemplate, clearMap } = encounter;
   const { entities, map } = state;
-  const [tool, setTool] = useState('move'); // 'move', 'pencil', 'eraser'
+  const [tool, setTool] = useState('move'); // 'move', 'pencil', 'eraser', 'paint', 'stamp'
+  const [activeAsset, setActiveAsset] = useState('grass_lush');
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState(null);
+  const [assetCache, setAssetCache] = useState({});
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+
+  // Hydrate asset cache
+  useEffect(() => {
+    const loader = async () => {
+      const cache = {};
+      const promises = Object.entries(ASSETS).map(([id, src]) => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.src = src;
+          img.onload = () => { cache[id] = img; resolve(); };
+          img.onerror = () => resolve();
+        });
+      });
+      await Promise.all(promises);
+      setAssetCache(cache);
+    };
+    loader();
+  }, []);
   
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Redraw canvas when drawing data changes
+  // Redraw canvas when map state or current path changes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw base terrain (tiled background)
+    const baseTileImg = assetCache[map?.config?.baseTile || 'grass_lush'];
+    if (baseTileImg) {
+      ctx.save();
+      const pattern = ctx.createPattern(baseTileImg, 'repeat');
+      if (pattern) {
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      ctx.restore();
+    }
     
     // Draw grid
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += GRID_SIZE) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += GRID_SIZE) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
+    if (showGrid) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += GRID_SIZE) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += GRID_SIZE) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
     }
 
-    // Draw paths
+    // Draw terrain overrides
+    if (map?.terrain) {
+      Object.entries(map.terrain).forEach(([coord, assetId]) => {
+        const [gx, gy] = coord.split(',').map(Number);
+        const img = assetCache[assetId];
+        if (img) {
+          ctx.drawImage(img, gx * GRID_SIZE, gy * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+        }
+      });
+    }
+
+    // Draw objects
+    if (map?.objects) {
+      map.objects.forEach(obj => {
+        const img = assetCache[obj.assetId];
+        if (img) {
+          ctx.save();
+          const drawX = obj.x * GRID_SIZE;
+          const drawY = obj.y * GRID_SIZE;
+          const size = GRID_SIZE * (obj.scale || 1);
+          ctx.translate(drawX, drawY);
+          ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+          ctx.drawImage(img, -size/2, -size/2, size, size);
+          ctx.restore();
+        }
+      });
+    }
+
+    // Draw tactical sketches
     if (map?.drawing) {
       map.drawing.forEach(path => {
         if (!path.points || path.points.length < 2) return;
@@ -66,7 +154,7 @@ const MapDisplay = ({ encounter }) => {
       currentPath.points.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
     }
-  }, [map?.drawing, currentPath]);
+  }, [map?.drawing, map?.terrain, map?.objects, map?.config, currentPath, assetCache, showGrid]);
 
   const view = map?.view || { x: 0, y: 0, zoom: 1 };
 
@@ -89,6 +177,21 @@ const MapDisplay = ({ encounter }) => {
   };
 
   const handleMouseDown = (e) => {
+    const pos = getMousePos(e);
+    const gx = Math.floor(pos.x / GRID_SIZE);
+    const gy = Math.floor(pos.y / GRID_SIZE);
+
+    if (tool === 'paint') {
+      setIsDrawing('paint');
+      placeTile(gx, gy, activeAsset);
+      return;
+    }
+
+    if (tool === 'stamp') {
+      placeObject(activeAsset, pos.x / GRID_SIZE, pos.y / GRID_SIZE);
+      return;
+    }
+
     if (tool === 'move' && e.button === 0) {
        if (e.target.closest('.token-element')) return;
        
@@ -103,7 +206,6 @@ const MapDisplay = ({ encounter }) => {
     if (tool === 'move') return;
     
     setIsDrawing(true);
-    const pos = getMousePos(e);
     setCurrentPath({
       type: 'pencil',
       points: [pos],
@@ -115,6 +217,15 @@ const MapDisplay = ({ encounter }) => {
   const handleMouseMove = (e) => {
     if (!isDrawing) return;
     
+    const pos = getMousePos(e);
+
+    if (isDrawing === 'paint') {
+      const gx = Math.floor(pos.x / GRID_SIZE);
+      const gy = Math.floor(pos.y / GRID_SIZE);
+      placeTile(gx, gy, activeAsset);
+      return;
+    }
+
     if (isDrawing === 'pan') {
       updateMap({
         view: { 
@@ -126,7 +237,6 @@ const MapDisplay = ({ encounter }) => {
       return;
     }
 
-    const pos = getMousePos(e);
     setCurrentPath(prev => ({
       ...prev,
       points: [...prev.points, pos]
@@ -136,7 +246,7 @@ const MapDisplay = ({ encounter }) => {
   const handleMouseUp = () => {
     if (!isDrawing) return;
     
-    if (isDrawing === 'pan') {
+    if (isDrawing === 'pan' || isDrawing === 'paint') {
       setIsDrawing(false);
       setCurrentPath(null);
       return;
@@ -187,7 +297,7 @@ const MapDisplay = ({ encounter }) => {
       </AnimatePresence>
 
       {/* HUD: Toolbar */}
-      <div className="absolute top-6 left-6 z-30 flex flex-col gap-3">
+      <div className="absolute top-6 left-6 z-[60] flex flex-col gap-3">
         <div className="glass-dark p-2 rounded-[1.5rem] flex flex-col gap-2 border border-white/10 shadow-2xl">
           <ToolButton 
             active={tool === 'move'} 
@@ -196,26 +306,137 @@ const MapDisplay = ({ encounter }) => {
             label="Tactical Maneuvers"
           />
           <ToolButton 
+            active={tool === 'paint'} 
+            onClick={() => { setTool('paint'); setPaletteOpen(true); }} 
+            icon={<MapIcon className="w-5 h-5" />} 
+            label="Terrain Painter"
+          />
+          <ToolButton 
+            active={tool === 'stamp'} 
+            onClick={() => { setTool('stamp'); setPaletteOpen(true); }} 
+            icon={<Maximize className="w-5 h-5" />} 
+            label="Object Stamp"
+          />
+          <ToolButton 
             active={tool === 'pencil'} 
             onClick={() => setTool('pencil')} 
             icon={<Pencil className="w-5 h-5" />} 
-            label="Strategic Sketch"
+            label="Tactical Sketch"
           />
           <ToolButton 
-            active={tool === 'eraser'} 
-            onClick={() => setTool('eraser')} 
-            icon={<Eraser className="w-5 h-5" />} 
-            label="Clear Obstacles"
+            active={!showGrid} 
+            onClick={() => setShowGrid(!showGrid)} 
+            icon={<Maximize className="w-5 h-5" />} 
+            label="Toggle Grid"
           />
-          <div className="h-px bg-white/10 my-1 mx-2" />
+        </div>
+
+        <div className="glass-dark p-2 rounded-[1.5rem] flex flex-col gap-2 border border-white/10 shadow-2xl">
           <ToolButton 
-            onClick={clearDrawing} 
-            icon={<Trash2 className="w-5 h-5" />} 
-            label="Purge Map"
-            danger
+            active={false} 
+            onClick={() => {
+              if (confirm("Sanitize battlefield? This will remove all tiles and objects.")) {
+                clearMap();
+              }
+            }} 
+            icon={<Trash2 className="w-5 h-5 text-red-400" />} 
+            label="Clear Battlefield"
           />
         </div>
       </div>
+
+      {/* Palette Sidebar */}
+      <AnimatePresence>
+        {paletteOpen && (
+          <motion.div
+            initial={{ x: -400 }}
+            animate={{ x: 0 }}
+            exit={{ x: -400 }}
+            className="absolute top-0 left-24 bottom-0 w-80 z-50 glass-dark border-r border-white/10 p-6 shadow-2xl flex flex-col gap-6"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white tracking-tight">Asset Palette</h3>
+              <button 
+                onClick={() => setPaletteOpen(false)} 
+                className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-8 overflow-y-auto pr-2 custom-scrollbar flex-1">
+              {/* Templates */}
+              <section>
+                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Scene Templates</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  {Object.values(MAP_TEMPLATES).map(tmpl => (
+                    <button
+                      key={tmpl.id}
+                      onClick={() => applyTemplate(tmpl)}
+                      className="group relative p-3 rounded-xl bg-white/5 hover:bg-indigo-500/20 border border-white/10 text-left transition-all overflow-hidden"
+                    >
+                      <div className="relative z-10">
+                        <span className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors">{tmpl.name}</span>
+                        <p className="text-[10px] text-slate-500 group-hover:text-slate-400">{tmpl.dimensions.width}x{tmpl.dimensions.height} Grid</p>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-indigo-500/0 group-hover:to-indigo-500/5 transition-all" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Assets Grid */}
+              <section>
+                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Tactical Assets</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  {Object.entries(ASSETS).map(([id, src]) => (
+                    <button
+                      key={id}
+                      onClick={() => setActiveAsset(id)}
+                      className={cn(
+                        "aspect-square rounded-xl border-2 overflow-hidden transition-all relative group",
+                        activeAsset === id 
+                          ? "border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] bg-indigo-500/20" 
+                          : "border-white/5 bg-white/5 hover:border-white/20"
+                      )}
+                    >
+                      <img src={src} alt={id} className="w-full h-full object-cover p-1 opacity-80 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[8px] text-white font-bold truncate block">{id.replace('_', ' ')}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+            
+            <div className="pt-4 border-t border-white/5">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-indigo-500/10 group-hover:border-indigo-500/30 transition-all">
+                   <Maximize className="w-5 h-5 text-slate-400 group-hover:text-indigo-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-slate-200">Upload Custom Asset</span>
+                  <span className="text-[10px] text-slate-500 uppercase tracking-tighter font-black">PNG • WEBP • JPEG</span>
+                </div>
+                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      // Logic to add to custom assets
+                      const customId = `custom_${Date.now()}`;
+                      ASSETS[customId] = ev.target.result;
+                      setActiveAsset(customId);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+              </label>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* HUD: Map Status (Repositioned) */}
       <div className="absolute bottom-20 right-6 z-30 flex gap-3 pointer-events-none">
@@ -258,7 +479,7 @@ const MapDisplay = ({ encounter }) => {
             const pos = map?.tokens?.[entity.id] || { x: 200 + (index * 60), y: 200 };
             return (
               <Token 
-                key={entity.id}
+                key={`${entity.id}-${index}`}
                 entity={entity}
                 pos={pos}
                 onMove={(newPos, isFinal) => updateToken(entity.id, newPos, isFinal)}
