@@ -965,3 +965,26 @@ The project is a high-fidelity, feature-rich D&D manager. The state machine is r
   - `placeTile` is REMOVED from exports (replaced by `commitTerrain`).
 - `State After Completion:` Repository is clean, tested, and fully documented. Ready for new features or handoff.
 - `Next Step / Handoff:` Potential next priorities — Fog of War reveal mechanic (player viewport), bundle splitting (dynamic imports), or UI polish pass.
+
+### Entry 37 - Battlemaster Layout: Map-Centric View with Collapsible Panels (2026-04-30)
+- `Summary:` New `BattlemasterLayout` view added — map in center (full height, flex-fill), collapsible left panel (Now Acting / NowActingPanel), collapsible right panel (Field Units / InitiativeLedger). Accessible via new TopBar button.
+- `Reason / Intent:` User requested a layout where the tactical map is primary and all combat-tracking information is visible simultaneously on one screen, eliminating the need to switch views.
+- `Research:` Surveyed Roll20 (fixed right sidebar + canvas split), Foundry VTT (left sidebar + pop-out combat overlay), Alchemy RPG (distributed multi-panel), Owlbear Rodeo (map-first + floating extensions). Decision: map gets majority real estate; panels are collapsible to maximize map space when needed; combat info stays accessible without obscuring the map.
+- `Files Changed:` `src/components/BattlemasterLayout.jsx` (new), `src/App.jsx`, `src/components/TopBar.jsx`
+- `Commit:` `7a699bd`
+- `Architecture:`
+  - `BattlemasterLayout.jsx` — pure layout component, accepts `{ encounter, activeEntity, toggleBestiary }`. Three-column flex: left panel (308px) → map (flex-1) → right panel (308px). Collapsed width: 36px. Framer Motion spring animation on panel width.
+  - Left panel: `NowActingPanel` with panel header and collapse/expand controls. Shows empty state when no active combatant.
+  - Right panel: `InitiativeLedger` with panel header. User can toggle its own compact mode via the ledger's existing button.
+  - `UI_VIEWS.BATTLEMASTER = 'battlemaster'` added to App.jsx. Routes to `BattlemasterLayout` when active; falls through to `MainDisplay` for `list`/`map`.
+  - TopBar gets third view button: `LayoutDashboard` icon, title="Battlemaster — Map + Panels". Active state uses indigo tint (distinct from white/map tints).
+- `Smoke Test (7/7 behavioral checks):`
+  - Battlemaster button found in TopBar ✓
+  - Canvas renders in center after switching to Battlemaster ✓
+  - Left panel "Now Acting" header visible ✓
+  - Right panel "Field Units" header visible ✓
+  - Left panel collapses (expand button appears, canvas persists) ✓
+  - Left panel re-expands (label returns) ✓
+  - No console or page errors ✓
+- `State After Completion:` Build passes (1912 kB). Three-view navigation fully operational: List / Tactical Map / Battlemaster.
+- `Next Step / Handoff:` Consider resizable panel handles (drag-to-resize), HP overlay bars on map tokens, or adding DamageCalculator to the left panel for quick damage application without opening GroupDamageSheet.
