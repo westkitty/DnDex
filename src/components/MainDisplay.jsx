@@ -11,7 +11,7 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const MainDisplay = ({ encounter, view, activeEntity }) => {
+const MainDisplay = ({ encounter, view, activeEntity, toggleBestiary }) => {
   const { state, clearAlert } = encounter;
 
   return (
@@ -76,7 +76,7 @@ const MainDisplay = ({ encounter, view, activeEntity }) => {
                     spendLegendaryAction={encounter.spendLegendaryAction}
                     spendLegendaryResistance={encounter.spendLegendaryResistance}
                   />
-                  <InitiativeLedger encounter={encounter} />
+                  <InitiativeLedger encounter={encounter} toggleBestiary={toggleBestiary} />
                 </div>
               )}
             </motion.div>
