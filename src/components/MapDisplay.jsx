@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MousePointer2, Pencil, Eraser, Move, Maximize, ZoomIn, ZoomOut, RotateCcw, Trash2, Map as MapIcon, Grid3X3, Layers, Eye, EyeOff, ImagePlus, SlidersHorizontal, X } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -41,7 +41,7 @@ for (let i = 0; i <= 228; i++) {
 }
 
 const MapDisplay = ({ encounter }) => {
-  const { state, updateMap, updateToken, commitTerrain, placeObject, applyTemplate, clearMap, commitDrawing, clearMapDrawing, setFogCell, clearFog, setMapBackground, clearMapBackground, setBackgroundOpacity, setBackgroundVisible } = encounter;
+  const { state, updateMap, updateToken, commitTerrain, placeObject, applyTemplate, clearMap, commitDrawing, clearMapDrawing, setFogCell, clearFog, setMapBackground, clearMapBackground, setBackgroundOpacity, setBackgroundVisible, addCustomMapAsset } = encounter;
   const { entities, map } = state;
   const [tool, setTool] = useState('move'); // 'move', 'pencil', 'eraser', 'paint', 'stamp', 'fog'
   const [activeAsset, setActiveAsset] = useState('grass_lush');
@@ -57,6 +57,11 @@ const MapDisplay = ({ encounter }) => {
   const [sketchesVisible, setSketchesVisible] = useState(true);
   const [fogVisible, setFogVisible] = useState(true);
   const bgImageRef = useRef(null);
+  const mergedAssets = useMemo(() => ({
+    ...ASSETS,
+    ...Object.fromEntries(Object.values(map?.config?.customAssets || {}).map((asset) => [asset.id, asset.dataUrl]))
+  }), [map?.config?.customAssets]);
+  const selectedAsset = mergedAssets[activeAsset] ? activeAsset : 'grass_lush';
 
   // Load background image object when dataUrl changes
   useEffect(() => {
@@ -77,7 +82,7 @@ const MapDisplay = ({ encounter }) => {
   useEffect(() => {
     const loader = async () => {
       const cache = {};
-      const promises = Object.entries(ASSETS).map(([id, src]) => {
+      const promises = Object.entries(mergedAssets).map(([id, src]) => {
         return new Promise((resolve) => {
           const img = new Image();
           img.src = src;
@@ -90,7 +95,7 @@ const MapDisplay = ({ encounter }) => {
       setIsLoadingAssets(false);
     };
     loader();
-  }, []);
+  }, [mergedAssets]);
   
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -235,12 +240,12 @@ const MapDisplay = ({ encounter }) => {
 
     if (tool === 'paint') {
       setIsDrawing('paint');
-      setPendingTiles({ [`${gx},${gy}`]: activeAsset });
+      setPendingTiles({ [`${gx},${gy}`]: selectedAsset });
       return;
     }
 
     if (tool === 'stamp') {
-      placeObject(activeAsset, pos.x / GRID_SIZE, pos.y / GRID_SIZE);
+      placeObject(selectedAsset, pos.x / GRID_SIZE, pos.y / GRID_SIZE);
       return;
     }
 
@@ -280,7 +285,7 @@ const MapDisplay = ({ encounter }) => {
     if (isDrawing === 'paint') {
       const gx = Math.floor(pos.x / GRID_SIZE);
       const gy = Math.floor(pos.y / GRID_SIZE);
-      setPendingTiles(prev => ({ ...prev, [`${gx},${gy}`]: activeAsset }));
+      setPendingTiles(prev => ({ ...prev, [`${gx},${gy}`]: selectedAsset }));
       return;
     }
 
@@ -602,7 +607,7 @@ const MapDisplay = ({ encounter }) => {
               <section>
                 <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Tactical Assets</h4>
                 <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(ASSETS).map(([id, src]) => (
+                  {Object.entries(mergedAssets).map(([id, src]) => (
                     <button
                       key={id}
                       onClick={() => setActiveAsset(id)}
@@ -632,17 +637,24 @@ const MapDisplay = ({ encounter }) => {
                   <span className="text-xs font-bold text-slate-200">Upload Custom Asset</span>
                   <span className="text-[10px] text-slate-500 uppercase tracking-tighter font-black">PNG • WEBP • JPEG</span>
                 </div>
-                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                       const customId = `custom_${Date.now()}`;
-                      ASSETS[customId] = ev.target.result;
+                      const dataUrl = String(ev.target.result || '');
+                      addCustomMapAsset({
+                        id: customId,
+                        name: file.name || customId,
+                        dataUrl,
+                        type: 'custom',
+                        createdAt: Date.now()
+                      });
                       
                       // Hydrate cache immediately for custom asset
                       const img = new Image();
-                      img.src = ev.target.result;
+                      img.src = dataUrl;
                       img.onload = () => {
                         setAssetCache(prev => ({ ...prev, [customId]: img }));
                         setActiveAsset(customId);
@@ -650,6 +662,7 @@ const MapDisplay = ({ encounter }) => {
                     };
                     reader.readAsDataURL(file);
                   }
+                  e.target.value = '';
                 }} />
               </label>
             </div>

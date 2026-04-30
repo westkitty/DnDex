@@ -27,7 +27,8 @@ const INITIAL_STATE = {
       gridSize: 50,
       width: 30,
       height: 30,
-      baseTile: 'grass_lush'
+      baseTile: 'grass_lush',
+      customAssets: {}
     }
   },
   snapshots: []
@@ -365,13 +366,27 @@ export const useEncounterState = () => {
         return false;
       }
       
-      updateState((prev) => ({
+      updateState((prev) => {
+        const importedConfig = imported.map?.config || {};
+        const normalizedCustomAssets = importedConfig.customAssets && typeof importedConfig.customAssets === 'object'
+          ? importedConfig.customAssets
+          : {};
+        return {
         ...INITIAL_STATE,
         ...imported,
-        map: { ...INITIAL_STATE.map, ...(imported.map || {}) },
+        map: {
+          ...INITIAL_STATE.map,
+          ...(imported.map || {}),
+          config: {
+            ...INITIAL_STATE.map.config,
+            ...importedConfig,
+            customAssets: normalizedCustomAssets
+          }
+        },
         snapshots: prev.snapshots,
         isHydrated: true
-      }), "Encounter restored from external source.");
+      };
+      }, "Encounter restored from external source.");
       return true;
     } catch (err) {
       console.error("Failed to parse encounter data:", err);
@@ -463,6 +478,46 @@ export const useEncounterState = () => {
     updateState(
       prev => ({ ...prev, map: { ...prev.map, objects: [...prev.map.objects, { id: generateId(), assetId, x, y, scale, rotation }] } }),
       `Object placed on battlefield.`
+    );
+  }, [updateState]);
+
+  const addCustomMapAsset = useCallback((asset) => {
+    if (!asset?.id || !asset?.dataUrl) return;
+    updateState(
+      prev => ({
+        ...prev,
+        map: {
+          ...prev.map,
+          config: {
+            ...prev.map.config,
+            customAssets: {
+              ...(prev.map.config?.customAssets || {}),
+              [asset.id]: asset
+            }
+          }
+        }
+      }),
+      `Added custom map asset: ${asset.name || asset.id}.`
+    );
+  }, [updateState]);
+
+  const removeCustomMapAsset = useCallback((assetId) => {
+    updateState(
+      prev => {
+        const nextAssets = { ...(prev.map.config?.customAssets || {}) };
+        delete nextAssets[assetId];
+        return {
+          ...prev,
+          map: {
+            ...prev.map,
+            config: {
+              ...prev.map.config,
+              customAssets: nextAssets
+            }
+          }
+        };
+      },
+      `Removed custom map asset: ${assetId}.`
     );
   }, [updateState]);
 
@@ -660,6 +715,8 @@ export const useEncounterState = () => {
     updateToken,
     commitTerrain,
     placeObject,
+    addCustomMapAsset,
+    removeCustomMapAsset,
     removeObject,
     applyTemplate,
     clearMap,

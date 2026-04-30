@@ -386,3 +386,72 @@ describe('Map History', () => {
     await waitFor(() => expect(result.current.state.map.terrain['0,0']).toBe('water_deep'));
   });
 });
+
+describe('Custom Map Assets', () => {
+  test('addCustomMapAsset stores asset in map.config.customAssets', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    const asset = {
+      id: 'custom_test_asset',
+      name: 'Test Asset',
+      dataUrl: 'data:image/png;base64,abc123',
+      type: 'custom',
+      createdAt: 1
+    };
+
+    act(() => {
+      result.current.addCustomMapAsset(asset);
+    });
+
+    expect(result.current.state.map.config.customAssets.custom_test_asset).toEqual(asset);
+  });
+
+  test('importState preserves customAssets from imported map config', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => {
+      result.current.importState({
+        entities: [],
+        map: {
+          config: {
+            customAssets: {
+              custom_imported: {
+                id: 'custom_imported',
+                name: 'Imported Asset',
+                dataUrl: 'data:image/png;base64,xyz',
+                type: 'custom',
+                createdAt: 2
+              }
+            }
+          }
+        }
+      });
+    });
+
+    expect(result.current.state.map.config.customAssets.custom_imported?.name).toBe('Imported Asset');
+  });
+
+  test('removeCustomMapAsset removes persisted custom asset entry', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => {
+      result.current.addCustomMapAsset({
+        id: 'custom_to_remove',
+        name: 'Temp Asset',
+        dataUrl: 'data:image/png;base64,temp',
+        type: 'custom',
+        createdAt: 3
+      });
+    });
+    expect(result.current.state.map.config.customAssets.custom_to_remove).toBeDefined();
+
+    act(() => {
+      result.current.removeCustomMapAsset('custom_to_remove');
+    });
+
+    expect(result.current.state.map.config.customAssets.custom_to_remove).toBeUndefined();
+  });
+});

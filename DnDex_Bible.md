@@ -1839,3 +1839,68 @@ sed -n '1,260p' src/hooks/useEncounterState.js
   - `Fact:` None.
 - `State After Completion:` Inspection done; implementation path is clear and low-risk.
 - `Next Step / Handoff:` Implement persisted custom asset state/actions and map hydration wiring.
+
+### Entry 58 - Custom Tactical Asset Persistence Implementation (2026-04-30)
+- `Summary:` Implemented persisted custom tactical asset registry and map asset hydration wiring, plus focused hook tests.
+- `Reason / Intent:` Prevent custom tactical map assets from disappearing after reload/import.
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js`
+  - `/Users/andrew/Projects/DM_Hub/src/components/MapDisplay.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `State Shape Added:`
+  - `Fact:` `state.map.config.customAssets` added to `INITIAL_STATE` as `{}`.
+  - `Fact:` Asset record shape used by uploader/action:
+    - `{ id, name, dataUrl, type: 'custom', createdAt }`
+- `Actions Added:`
+  - `addCustomMapAsset(asset)`
+  - `removeCustomMapAsset(assetId)`
+- `History Behavior Decision:`
+  - `Fact:` Adding/removing custom assets is content-level and now goes through `updateState` (history-aware), not `updateMap`.
+- `Implementation Details:`
+  - `Fact:` `importState` now normalizes `map.config.customAssets` to an object and preserves imported custom assets when present.
+  - `Fact:` `MapDisplay` now merges built-in `ASSETS` with persisted `state.map.config.customAssets` for palette rendering and `assetCache` hydration.
+  - `Fact:` Custom upload now calls `addCustomMapAsset(...)` instead of writing only to module-level `ASSETS`.
+  - `Fact:` Uploaded custom asset remains immediately selectable and rendered via optimistic `assetCache` update.
+- `Tests Added:`
+  - `addCustomMapAsset stores asset in map.config.customAssets`
+  - `importState preserves customAssets from imported map config`
+  - `removeCustomMapAsset removes persisted custom asset entry`
+- `Risk Notes:`
+  - `Fact:` No pan/zoom/token math behavior changed.
+  - `Fact:` No map rendering pipeline rewrite performed.
+- `Next Step / Handoff:` Run full build/test/lint/smoke validation; if pass, commit and push feature.
+
+### Entry 59 - Custom Asset Persistence Validation Results (2026-04-30)
+- `Summary:` Completed full validation for custom tactical asset persistence changes.
+- `Reason / Intent:` Confirm feature safety and project stability before commit.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js`
+  - `/Users/andrew/Projects/DM_Hub/src/components/MapDisplay.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Verify build, test, lint, and headless smoke after custom asset persistence implementation.
+- `Outputs Generated:`
+  - `Fact:` `npm run build` PASS.
+  - `Fact:` `npx vitest run` PASS (`22/22`).
+  - `Fact:` `npm run lint` PASS with warnings only (`0 errors, 2 warnings`) — same two known warnings.
+  - `Fact:` First smoke run failed on known-flaky panel interaction checks (`panel drag works`, restore button visibility).
+  - `Fact:` Second smoke run PASS (`Smoke pass: 20 checks`).
+- `Decisions:`
+  - `Fact:` Treated first smoke failure as transient harness instability after immediate successful re-run with no code changes.
+- `Bugs / Blockers:`
+  - `Fact:` No blocker for custom asset persistence feature.
+- `Correction:`
+  - `Fact:` Smoke evidence recorded with both initial failure and successful rerun for traceability.
+- `State After Completion:` Feature implementation validated and ready to commit/push.
+- `Next Step / Handoff:` Commit and push `feat: persist custom tactical map assets`; then append commit/push verification entry.
