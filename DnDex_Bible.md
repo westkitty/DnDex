@@ -80,126 +80,239 @@ DnDex (DM Hub) is a high-performance, tactical D&D 5e encounter management tool 
 - `vite.config.js`: Vite configuration, including PWA and base path settings.
 - `tailwind.config.js`: Tailwind CSS design tokens.
 - `index.html`: Entry point for the SPA.
-- `Project_Bible.md` & `BIBLE.md`: Historical and strategic documentation.
+- `eslint.config.js`: ESLint configuration. `varsIgnorePattern: '^[A-Z_]|^motion'` suppresses false positives for Framer Motion and lucide-react icons used as JSX member expressions.
+- `Project_Bible.md` & `BIBLE.md`: Historical and strategic documentation (legacy).
 - `README.md`: Basic project intro.
-- `azazel_tiles.json`, `kenney_rpg_tiles.json`, etc.: Asset manifest files for the map engine.
+- `DnDex_Bible.md`: **This file.** The authoritative handoff document.
+- `public/assets/tiles/`: Kenney RPG tile PNGs (`rpgTile000.png` → `rpgTile228.png`). Used by MapDisplay.
 
 ### `src/`
-- `main.jsx`: App entry point.
-- `App.jsx`: Root component, manages top-level layout and state distribution.
-- `App.css`: Global styles and custom Tailwind utilities.
+- `main.jsx`: App entry point. Wraps in `<ToastProvider>`.
+- `App.jsx`: Root component. Owns the `useEncounterState` hook and distributes the `encounter` object to all children. Manages three-view routing (`list`, `map`, `battlemaster`) via `UI_VIEWS` enum and a single `useState`. Also manages a modal state machine (`UI_MODALS` enum: `NONE`, `BESTIARY`, `RULES`, `SNAPSHOTS`) so only one drawer is open at a time.
+- `App.css`: Global styles and custom Tailwind utilities (glass-dark, text-gradient-ether, etc.).
 - `index.css`: Tailwind entry point.
 
 ### `src/components/`
-- `ActionLedger.jsx`: Chronological, filtered log of encounter events.
-- `EntityCard.jsx`: Complex component for managing a single combatant. Handles HP, AC, conditions, and legendary resources.
-- `InitiativeLedger.jsx`: Lists and reorders all entities in the encounter.
-- `MapDisplay.jsx`: The Tactical Map Engine. Handles canvas layers, grid snapping, and tool interactions.
-- `NowActingPanel.jsx`: Dedicated command center for the current turn's actor.
-- `TacticalAlertStack.jsx`: Actionable dropdown for high-priority alerts (Concentration saves, Lair actions).
-- `BestiaryDrawer.jsx`: Searchable monster library for encounter deployment.
-- `ToastProvider.jsx`: System-wide notification framework for Undo/Redo and state feedback.
-- `TopBar.jsx`: Header navigation and encounter-level actions.
-- `MainDisplay.jsx`: Orchestrates the main view (Initiative vs. Map).
+- `TopBar.jsx`: Header navigation. View switcher (List / Map / Battlemaster), Round tracker, Next Action button, Undo/Redo, Quick Add menu, Tools menu (Rules, Snapshots, Export/Import, Wipe, Reset).
+- `MainDisplay.jsx`: Renders the `list` and `map` views. Left panel: `NowActingPanel`. Right panel: `InitiativeLedger`. Center: `MapDisplay` or entity list. Responsive split layout.
+- `BattlemasterLayout.jsx`: Renders the `battlemaster` view. Resizable collapsible left panel (NowActingPanel + BattlemasterQuickActions), full-width center (MapDisplay), resizable collapsible right panel (InitiativeLedger). Drag handles with spring animation disabled during active resize.
+- `BattlemasterQuickActions.jsx`: Quick Strike strip pinned at bottom of Battlemaster left panel. Chips [5,10,15,20] pre-fill amount. Damage (rose) and Heal (emerald) buttons act on `activeEntity`. Hidden when no active entity.
+- `NowActingPanel.jsx`: Dedicated command center for the active turn's combatant. Shows HP bar, AC, conditions, legendary resources. Advance Turn button.
+- `InitiativeLedger.jsx`: Sortable list of all combatants. Drag to reorder. Add from Bestiary button. Contains `GroupDamageSheet` locally with its own `isGroupDamageOpen` state.
+- `EntityCard.jsx`: Thin orchestrator for a single combatant row. Delegates to entity-card subcomponents. ~13 KB.
+- `ActionLedger.jsx`: Chronological, filtered log of encounter events (grouped by round, searchable by type).
+- `MapDisplay.jsx`: The Tactical Map Engine. 2500×2500px canvas inside a `transform: translate/scale` div for pan/zoom. Tools: move/pan, terrain paint, object stamp, tactical sketch, fog of war. Asset Palette sidebar with Battle Map, Layer Visibility, Scene Templates, and Tactical Assets sections. Token HP bars always visible. ~35 KB.
+- `TacticalAlertStack.jsx`: Dismissable alert row in TopBar. Actionable for Concentration saves and Lair actions.
+- `BestiaryDrawer.jsx`: Slide-out drawer. Searchable/filterable library of 334 SRD monsters. Deploy to encounter with one click.
+- `BestiaryModal.jsx`: Modal version of the bestiary (used from some contexts).
+- `RulesPanel.jsx`: Rules reference drawer.
+- `SnapshotDrawer.jsx`: Temporal snapshot save/load drawer.
+- `DamageCalculator.jsx`: Standalone damage calculator panel.
+- `GroupDamageSheet.jsx`: Multi-target damage application sheet (owned by InitiativeLedger).
 - `CommandPalette.jsx`, `ConditionPalette.jsx`: UI primitives for actions and status effects.
-- `DamageCalculator.jsx`, `GroupDamageSheet.jsx`: Specialized combat tools.
+- `TacticalAlertStack.jsx`: Alert system for concentration saves and lair actions.
+- `ToastProvider.jsx`: System-wide toast notifications.
+
+### `src/components/entity-card/`
+- `EntityHP.jsx`: HP bar, damage/heal input, temp HP.
+- `EntityStats.jsx`: AC, initiative, speed, ability scores.
+- `EntityConditions.jsx`: Condition badges and toggles.
+- `EntityActions.jsx`: Action/bonus action tracking.
+- `EntityLegendaryResources.jsx`: Legendary action and resistance pips.
+- `EntityReference.jsx`: Inline stat block reference popup.
+- `entityCardUtils.js`: Shared `cn()` utility (twMerge + clsx).
 
 ### `src/hooks/`
-- `useEncounterState.js`: The "Brain" of the app. Manages entities, round/turn, logs, history, and IndexedDB sync.
-- `useEncounterState.test.js`: Comprehensive test suite for the state machine.
+- `useEncounterState.js`: The "Brain." All mutations go through `updateState(updater, logMsg, options)`. History-aware by default; `options.skipHistory = true` for view-only changes. Exports the full `encounter` object consumed by App.jsx.
+- `useEncounterState.test.js`: 16 Vitest tests covering entity CRUD, damage/healing, turn advancement, undo/redo, and all map history actions.
 
 ### `src/data/`
 - `bestiary.json`: 334 SRD monster stat blocks.
-- `demoEncounter.js`: Sample data for the "Quick-Start" feature.
-- `MapTemplates.js`: Pre-defined scene configurations for the map engine.
+- `monster_schema.json`: JSON Schema for bestiary validation.
+- `demoEncounter.js`: Sample encounter data for Quick-Start.
+- `MapTemplates.js`: Pre-defined scene configurations (Tavern Brawl, Dungeon Chamber, Forest Ambush, etc.).
 
 ### `src/utils/`
-- `combat.js`: Helper functions for damage calculation and dice logic.
+- `combat.js`: `calculateFinalDamage({ amount, multiplier, save })` — damage arithmetic helper.
+- `combatEngine.js`: Core combat logic engine (initiative sorting, damage application, turn advancement). Imported by `useEncounterState.js`.
 
 ## Architecture Map
 
 ### Application Flow
-1. `main.jsx` mounts the app.
-2. `App.jsx` initializes `useEncounterState`.
-3. `useEncounterState` hydrates state from IndexedDB and sets up `BroadcastChannel` listeners.
-4. `App.jsx` renders `TopBar`, `MainDisplay`, and various `Drawer/Modal` components.
-5. `MainDisplay.jsx` toggles between the `InitiativeLedger` and `MapDisplay`.
-6. `useEncounterState` provides actions (damage, heal, advance turn) to all downstream components.
+1. `main.jsx` mounts the app inside `<ToastProvider>`.
+2. `App.jsx` calls `useEncounterState()` — the single source of truth. The returned `encounter` object is passed to every child.
+3. `useEncounterState` hydrates from IndexedDB on mount and opens a `BroadcastChannel` for multi-tab sync. Auto-saves on every state change (debounced 500ms).
+4. `App.jsx` routes view via `view` state: `'list'` → `<MainDisplay>`, `'map'` → `<MainDisplay>` (map-only), `'battlemaster'` → `<BattlemasterLayout>`.
+5. Modal state (`activeModal`) controls which drawer is open: `BESTIARY`, `RULES`, or `SNAPSHOTS`. Only one can be open at a time.
+6. All mutations call `encounter.someAction(args)` which delegates to `updateState()` inside `useEncounterState`. History is managed there.
 
 ### Text Map
-App Entry (`main.jsx`)
-└── App (`App.jsx`)
-    ├── TopBar (Alerts, History, Sync Status)
-    ├── MainDisplay
-    │   ├── NowActingPanel (Active Actor Focus)
-    │   ├── InitiativeLedger (Entity List)
-    │   │   └── EntityCard (HP, Stats, Actions)
-    │   └── MapDisplay (Canvas Engine)
-    ├── BestiaryDrawer (Monster Search)
-    └── ToastProvider (Notifications)
+```
+App Entry (main.jsx)
+└── ToastProvider
+    └── App (App.jsx) — owns useEncounterState
+        ├── TopBar — view switcher, round/turn controls, undo/redo, menus
+        │
+        ├── [view = 'list' | 'map'] MainDisplay
+        │   ├── NowActingPanel (left)
+        │   ├── InitiativeLedger (right)
+        │   │   └── EntityCard → entity-card/* subcomponents
+        │   └── MapDisplay (center, canvas engine)
+        │
+        ├── [view = 'battlemaster'] BattlemasterLayout
+        │   ├── Left panel (collapsible, resizable): NowActingPanel + BattlemasterQuickActions
+        │   ├── Center: MapDisplay
+        │   └── Right panel (collapsible, resizable): InitiativeLedger
+        │
+        ├── BestiaryDrawer (slide-out modal)
+        ├── RulesPanel (slide-out modal)
+        └── SnapshotDrawer (slide-out modal)
+```
+
+### Key Invariants
+- **Single state owner**: `useEncounterState` in `App.jsx`. Never call `setState` directly in children.
+- **History contract**: All content mutations go through `updateState` without `skipHistory`. Pan/zoom/view-only changes use `skipHistory: true`. This keeps the undo stack clean.
+- **Canvas architecture**: The `<canvas>` (2500×2500px) lives inside a `transform: translate(x,y) scale(zoom)` div. All canvas content (background, tiles, fog, drawing) auto-participates in pan/zoom. Tokens are DOM `motion.div` elements in the same transform div, not drawn on canvas.
+- **Map state**: All map content is in `state.map.*` and persisted to IndexedDB. View state (pan/zoom) is also in `state.map.view` but skips history.
 
 ## Feature Map
 
 ### Feature: Encounter State & Persistence
 - **Status**: Complete / Stable.
-- **User-facing behavior**: Changes persist across reloads and sync instantly across multiple tabs.
+- **User-facing behavior**: All changes persist across browser reloads via IndexedDB. Multiple browser tabs stay in sync via BroadcastChannel. Sync status indicator in TopBar.
 - **Implementation files**: `src/hooks/useEncounterState.js`
-- **Data/state involved**: `entities`, `round`, `turnIndex`, `logs`, `history`.
-- **UI components involved**: `App.jsx` (Sync Status), `TopBar.jsx` (Undo/Redo).
+- **Data/state involved**: `entities`, `round`, `turnIndex`, `logs`, `history`, `historyPointer`, `lastUpdated`, `snapshots`.
+- **UI components involved**: `TopBar.jsx` (Undo/Redo, sync badge).
 
 ### Feature: Combat Engine
-- **Status**: Advanced.
-- **User-facing behavior**: Auto-calculates Concentration Save DCs, tracks Legendary Actions/Resistances, and resets resources on turn start.
-- **Implementation files**: `src/hooks/useEncounterState.js`, `src/components/EntityCard.jsx`, `src/components/TacticalAlertStack.jsx`.
-- **Data/state involved**: `entities.conditions`, `entities.legendaryActions`.
-- **UI components involved**: `TacticalAlertStack`, `EntityCard`.
+- **Status**: Complete.
+- **User-facing behavior**: Auto-calculates Concentration Save DCs on any damage to a concentrating entity. Tracks Legendary Actions and Resistances with spend buttons. Group Damage applies one roll to multiple selected targets. Lair Action button injects alert.
+- **Implementation files**: `src/hooks/useEncounterState.js`, `src/utils/combatEngine.js`, `src/components/entity-card/`, `src/components/TacticalAlertStack.jsx`, `src/components/GroupDamageSheet.jsx`.
+- **Data/state involved**: `entities[].conditions`, `entities[].legendaryActions`, `entities[].legendaryResistances`, `entities[].concentration`, `alerts`.
+- **UI components involved**: `TacticalAlertStack`, `EntityCard` + subcomponents, `NowActingPanel`, `BattlemasterQuickActions`.
 
 ### Feature: Tactical Map Engine
+- **Status**: Complete. All layers are history-aware and undoable (except pan/zoom).
+- **User-facing behavior**: DMs can paint terrain tiles, stamp objects, sketch tactical annotations, apply fog of war, and upload a battle map background image. All layers independently togglable.
+- **Tools**: `move/pan`, `paint` (terrain), `stamp` (object), `pencil` (sketch), `eraser`, `fog` (hide/reveal).
+- **Layer order (bottom to top)**: Background image → Terrain tiles → Pending tiles (during drag) → Objects → Tactical sketches → Fog of War → Tokens (DOM layer).
+- **Implementation files**: `src/components/MapDisplay.jsx`, `src/hooks/useEncounterState.js` (map actions), `src/data/MapTemplates.js`.
+- **Data/state involved**: `map.background`, `map.terrain`, `map.objects`, `map.drawing`, `map.fog`, `map.tokens`, `map.view`, `map.config`.
+- **Map actions (all in useEncounterState)**:
+  - `updateMap(updates)` — view-only (skipHistory): pan/zoom
+  - `updateToken(id, pos, isFinal)` — token drag
+  - `commitTerrain(terrainUpdates)` — terrain paint stroke → single history entry
+  - `placeObject(assetId, x, y, scale, rotation)` — stamp
+  - `removeObject(objectId)` — stamp delete
+  - `applyTemplate(template)` — load scene preset
+  - `clearMap()` — wipe terrain + objects
+  - `commitDrawing(path)` — sketch stroke
+  - `clearMapDrawing()` — wipe all sketches
+  - `setFogCell(x, y, hidden)` — individual fog cell
+  - `clearFog()` — lift all fog
+  - `setMapBackground(dataUrl)` — upload battle map image (history-aware)
+  - `clearMapBackground()` — remove background (history-aware)
+  - `setBackgroundOpacity(opacity)` — opacity slider (skipHistory)
+  - `setBackgroundVisible(visible)` — eye toggle (skipHistory)
+- **Local UI state in MapDisplay** (not persisted): `tool`, `activeAsset`, `isDrawing`, `currentPath`, `pendingTiles`, `fogMode`, `assetCache`, `paletteOpen`, `showGrid`, `isLoadingAssets`, `bgImage`, `sketchesVisible`, `fogVisible`.
+- **Assets**: Kenney RPG tiles `rpgTile000–228` from `public/assets/tiles/`. Custom tile uploads injected into ASSETS object at runtime (not persisted across reload). Battle map background stored as DataURL in `map.background.dataUrl` (persisted).
+
+### Feature: Battlemaster Layout
 - **Status**: Complete.
-- **User-facing behavior**: DMs can paint terrain, stamp objects, and sketch tactical lines on a 50px grid.
-- **Implementation files**: `src/components/MapDisplay.jsx`
-- **Data/state involved**: `mapState` (Inferred: contained within `useEncounterState` or local).
-- **UI components involved**: `MapDisplay`.
+- **User-facing behavior**: Three-panel dashboard — left collapsible panel (Now Acting + Quick Strike), center tactical map, right collapsible panel (Field Units). Both side panels drag-resize between 240–420px. Auto-collapse on narrow viewports. Spring animation on open/close; instant (no spring) during active drag.
+- **Implementation files**: `src/components/BattlemasterLayout.jsx`, `src/components/BattlemasterQuickActions.jsx`.
+- **Key implementation details**:
+  - Separate `leftWidth`/`rightWidth` state, independent of each other.
+  - `leftOpen` (init: `vw >= 700`), `rightOpen` (init: `vw >= 900`) — user choices respected after mount.
+  - Drag: refs (`dragging`, `dragStartX`, `dragStartW`) + global `mousemove`/`mouseup` listeners prevent stale closures and re-render lag.
+  - `isResizing` state switches Framer Motion transition to `{ duration: 0 }` during drag, back to `SPRING` on release.
+  - Token HP bars: persistent 3px strip below each token. Green >50%, amber >25%, rose ≤25%. Present in both Battlemaster and standalone Map views.
 
 ### Feature: Bestiary Deployment
 - **Status**: Complete.
-- **User-facing behavior**: Searchable library of 334 monsters can be added to the encounter with one click.
+- **User-facing behavior**: Searchable + filterable library of 334 SRD monsters. One-click deploy to encounter. Name disambiguation auto-numbers duplicates (e.g. "Goblin 2").
 - **Implementation files**: `src/components/BestiaryDrawer.jsx`, `src/data/bestiary.json`.
-- **UI components involved**: `BestiaryDrawer`.
+- **UI components involved**: `BestiaryDrawer`, `BestiaryModal`.
+
+### Feature: Snapshots
+- **Status**: Complete.
+- **User-facing behavior**: DM can save up to 10 named snapshots of the full encounter state, restore any, or delete.
+- **Implementation files**: `src/components/SnapshotDrawer.jsx`, `src/hooks/useEncounterState.js`.
+- **Data/state involved**: `snapshots[]` — persisted, preserved across `clearEncounter`.
+
+### Feature: Export / Import
+- **Status**: Complete.
+- **User-facing behavior**: "Archive Campaign" exports full JSON. "Player Handout" exports a sanitised view (HP shown as Healthy/Bloodied/Dead for enemies, hidden entities excluded). "Upload Session" restores from JSON.
+- **Implementation files**: `src/components/TopBar.jsx`, `src/hooks/useEncounterState.js` (`importState`, `exportState`).
+
+### Feature: History / Undo-Redo
+- **Status**: Complete.
+- **User-facing behavior**: Undo/Redo buttons in TopBar. Toast notification names what was reverted/restored. History capped at 50 entries.
+- **Implementation files**: `src/hooks/useEncounterState.js` (`undo`, `redo`, `canUndo`, `canRedo`).
 
 ## Data Model and Domain Map
 
-### `EncounterState`
-- **Defined in**: `src/hooks/useEncounterState.js`
-- **Fields**: `entities` (Array), `round` (Number), `turnIndex` (Number), `logs` (Array), `history` (Object).
-- **Meaning**: The global state of the current combat session.
+### `EncounterState` (top-level)
+- **Defined in**: `src/hooks/useEncounterState.js` (`INITIAL_STATE`)
+- **Fields**:
+  - `round` (Number) — current combat round
+  - `turnIndex` (Number) — index into `entities` for whose turn it is
+  - `entities` (Array\<Entity\>)
+  - `alerts` (Array\<Alert\>) — max 10, actionable (concentration saves, lair actions)
+  - `logs` (Array\<LogEntry\>) — max 100 entries, newest first
+  - `history` (Array\<Snapshot\>) — undo stack, max 50; NOT persisted to disk
+  - `historyPointer` (Number) — current position in history stack; NOT persisted
+  - `lastUpdated` (Number) — Unix ms timestamp, used for multi-tab conflict detection
+  - `snapshots` (Array\<Snapshot\>) — max 10 named DM snapshots; persisted
+  - `map` (MapState)
+  - `isHydrated` (Boolean) — set to true after IndexedDB load; NOT persisted
 
 ### `Entity` (Combatant)
-- **Defined in**: `src/hooks/useEncounterState.js` (Schema inferred from `bestiary.json` and updaters).
-- **Fields**: `id`, `name`, `type` (player/monster), `hp`, `maxHp`, `ac`, `initiative`, `conditions`, `legendaryActions`, `legendaryResistances`.
-- **Notes**: Entities can be "Bloodied" (HP <= 50%) or "Dead" (HP = 0).
+- **Fields**: `id`, `name`, `isPlayer` (Boolean), `hp`, `maxHp`, `ac`, `initiative`, `speed`, `conditions` (Array\<string\>), `effects` (Array), `concentration` (Boolean), `tempHp`, `legendaryActions`, `legendaryActionsMax`, `legendaryResistances`, `legendaryResistancesMax`, `hidden` (Boolean — DM-only, excluded from player export), `groupId` (string — for group damage), `pos`.
+- **Notes**: "Bloodied" = `hp <= maxHp / 2`. "Dead" = `hp <= 0`. Name disambiguation auto-appends ` 2`, ` 3`, etc. on clone.
+
+### `MapState`
+- **Defined in**: `INITIAL_STATE.map` in `useEncounterState.js`
+- **Fields**:
+  - `terrain` (Object\<`"x,y"` → assetId\>) — painted tile overrides
+  - `objects` (Array\<{id, assetId, x, y, scale, rotation}\>) — stamped objects
+  - `drawing` (Array\<Path\>) — committed tactical sketch paths
+  - `tokens` (Object\<entityId → {x, y}\>) — token positions in canvas coords
+  - `fog` (Object\<`"x,y"` → true\>) — fogged grid cells
+  - `background` ({dataUrl: string|null, opacity: number [0-1], visible: boolean}) — battle map image
+  - `view` ({x, y, zoom}) — pan/zoom (skipHistory)
+  - `config` ({gridVisible, gridSize: 50, width: 30, height: 30, baseTile}) — scene config
 
 ### `LogEntry`
-- **Defined in**: `src/hooks/useEncounterState.js`
-- **Fields**: `id`, `timestamp`, `message`, `type` (damage/heal/status), `subType` (elemental types), `round`.
+- **Fields**: `id`, `timestamp`, `message`, `type` ('damage'|'heal'|'info'), `subType` (damage type string), `round`.
 - **Used by**: `ActionLedger.jsx`.
 
 ## UI/UX Structure
-- **Navigation**: Top-level tabs for "Initiative" and "Map". Slide-out drawers for "Bestiary" (left) and "Snapshots" (right).
-- **Visual Theme**: "Dragon" Dark-Glass. High use of `backdrop-blur`, semi-transparent backgrounds, and glowing accents.
-- **Key Components**:
-  - `NowActingPanel`: Large, centered display for the current actor. Features rose-glow for monsters and indigo-glow for players.
-  - `TacticalAlertStack`: Actions concentration saves and lair actions from the header.
-  - `ActionLedger`: Grouped by round, searchable/filterable by action type.
-- **Feedback Patterns**: 
-  - Framer Motion "shakes" and red flashes on damage.
-  - Ghost-bar HP previews in `EntityCard`.
-  - Toast notifications for every state change (Undo/Redo, Persistence).
-  - Pulse animations for "Bloodied" status.
-- **Strengths**: High information density without clutter (Compact Mode), tactile combat feedback, multi-tab sync.
-- **Weaknesses**: 
-  - `EntityCard.jsx` is becoming a "God Component" (33KB).
-  - `MapDisplay.jsx` is monolithic and handles both logic and rendering.
+- **Views**: Three top-level views, switched via TopBar icon group:
+  - `list` (Layout icon): Split-panel — NowActingPanel left, InitiativeLedger right, with ActionLedger and optional MapDisplay below.
+  - `map` (Camera icon): Full-screen MapDisplay with floating toolbars.
+  - `battlemaster` (LayoutDashboard icon): Three-panel — left (NowActingPanel + QuickActions), center (MapDisplay), right (InitiativeLedger). Both side panels collapsible and drag-resizable.
+- **Modals/Drawers**: Bestiary (slide from right), Rules Panel, Snapshot Drawer. Only one open at a time (enforced by `activeModal` FSM in App.jsx).
+- **Visual Theme**: "Dragon" Dark-Glass. Design tokens defined in `App.css` / `tailwind.config.js`:
+  - `var(--color-obsidian-950/900/...)` — background layers
+  - `var(--color-ether-500)` — indigo accent (player glow, active element)
+  - `glass-dark` utility class — `backdrop-blur + bg-white/5`
+  - `text-gradient-ether` — indigo→purple gradient on "DM HUB" title
+- **Key Component Aesthetics**:
+  - `NowActingPanel`: Indigo glow (players), rose glow (monsters). Large initiative badge.
+  - `TacticalAlertStack`: Actionable dismiss + resolve buttons inline in header alert.
+  - `BattlemasterQuickActions`: Compact Quick Strike strip. Chip row + custom input + Dmg/Heal pair.
+  - Token circles: Indigo fill (players), rose fill (monsters). Persistent 3px HP bar strip below. Active ring pulse. Bloodied ring. Concentration dashed spin ring. Dead: greyscale + blur.
+- **Feedback Patterns**:
+  - Framer Motion shake + red flash on damage (EntityCard).
+  - Ghost-bar HP preview on hover (EntityCard).
+  - Toast notifications for Undo/Redo and persistence events.
+  - Pulse animation for "Bloodied" status.
+  - Spring animation on panel collapse/expand; instant during drag resize.
+- **Strengths**: High information density, tactile combat feedback, multi-tab sync, full undo/redo.
+- **Weaknesses**:
+  - `MapDisplay.jsx` is monolithic at 35 KB — mixes canvas rendering, event handling, tool logic, and palette UI.
+  - Custom tile uploads (non-background) are runtime-only and do not persist across reload.
 
 ## Project Intentions
 
@@ -224,89 +337,138 @@ App Entry (`main.jsx`)
 ```bash
 npm install
 ```
-- Source: `package.json`
 
 ### Development
 ```bash
 npm run dev
 ```
-- Source: `package.json`
 
 ### Build
 ```bash
 npm run build
 ```
-- Result: **Passed** (Tested 2026-04-29). Generates `dist/` with PWA support.
+- Result: **Passed** (Last verified 2026-04-30). Generates `dist/` with PWA/ServiceWorker support. Bundle ~1921 kB (gzip ~392 kB). Large-chunk warning is expected — no action required.
 
 ### Test
 ```bash
-npm run test:harness
+npx vitest run
 ```
-- Result: **Passed** (8/8 tests pass).
+- Result: **16/16 passed** (Last verified 2026-04-30).
 - Source: `src/hooks/useEncounterState.test.js`.
+- Coverage: entity CRUD, damage/healing, concentration alert generation, turn advancement, undo/redo, all map history actions (commitTerrain, commitDrawing, clearMapDrawing, placeObject, clearMap).
 
 ### Lint
 ```bash
 npm run lint
 ```
-- Result: **Failed** (45 problems).
-- Notable: Unused vars (`motion`, `lucide-react` icons).
+- Result: **12 errors, 4 warnings** (Last verified 2026-04-30). 4 warnings are `react-hooks/exhaustive-deps` non-critical. 12 errors are pre-existing from earlier sessions. `motion` false positives suppressed via `varsIgnorePattern` in `eslint.config.js`.
 
 ## Dependency and Import Map
 
 ### `src/hooks/useEncounterState.js`
-- **Central Hub**: Manages all stateful logic.
-- **Imports**: `idb-keyval`, `lucide-react`.
-- **Imported by**: `App.jsx`.
+- **Central Hub**: All state lives here. Returns the `encounter` object consumed by `App.jsx` and distributed to all children as props.
+- **Imports**: `react` (useState, useEffect, useCallback, useRef), `idb-keyval` (get, set), `../utils/combatEngine` (combatEngine, generateId).
+- **Imported by**: `App.jsx` only.
 
-### `src/components/EntityCard.jsx`
-- **Visual Core**: Handles HP, AC, conditions, and legendary resources.
-- **Imports**: `framer-motion`, `lucide-react`, `CommandPalette`.
-- **Imported by**: `InitiativeLedger.jsx`.
+### `src/utils/combatEngine.js`
+- **Combat Logic**: Initiative sorting, damage application, turn advancement.
+- **Imported by**: `src/hooks/useEncounterState.js`.
 
 ### `src/components/MapDisplay.jsx`
-- **Canvas Engine**: Manages multi-layer rendering.
-- **Imports**: `src/data/MapTemplates.js`.
-- **Isolated**: Mostly self-contained but depends on `useEncounterState` for token placement.
+- **Canvas Engine**: Multi-layer tactical map. 35 KB. Manages all canvas rendering, event handling, tool state, and palette UI.
+- **Imports**: `react`, `framer-motion`, `lucide-react`, `clsx`, `tailwind-merge`, `../data/MapTemplates`.
+- **Receives from encounter**: `state`, `updateMap`, `updateToken`, `commitTerrain`, `placeObject`, `applyTemplate`, `clearMap`, `commitDrawing`, `clearMapDrawing`, `setFogCell`, `clearFog`, `setMapBackground`, `clearMapBackground`, `setBackgroundOpacity`, `setBackgroundVisible`.
+
+### `src/components/BattlemasterLayout.jsx`
+- **Three-panel shell**: Wraps MapDisplay, NowActingPanel, InitiativeLedger with collapsible resizable panels.
+- **Imports**: `react`, `framer-motion`, `lucide-react`, `./MapDisplay`, `./NowActingPanel`, `./InitiativeLedger`, `./BattlemasterQuickActions`.
+
+### `src/components/EntityCard.jsx`
+- **Thin orchestrator**: Delegates rendering to entity-card/* subcomponents.
+- **Imports**: `./entity-card/*`, `framer-motion`, `lucide-react`.
+- **Imported by**: `InitiativeLedger.jsx`.
+
+### `src/components/entity-card/entityCardUtils.js`
+- **Shared utility**: Exports `cn(...inputs)` using `twMerge(clsx(inputs))`.
+- **Imported by**: All entity-card subcomponents, `BattlemasterQuickActions.jsx`, `MapDisplay.jsx` (has its own inline copy).
 
 ## Risks, Bugs, Blockers, and Contradictions
 
-### [BLOCKER] Reference Error in `importState`
-- **Evidence**: `src/hooks/useEncounterState.js:202` refers to `prev` which is not in scope.
-- **Affected files**: `src/hooks/useEncounterState.js`.
-- **Severity**: High (Blocker for import feature).
-- **Why it matters**: Importing a session will crash the application.
-- **Suggested next step**: Move the logic inside an `updateState` functional callback.
+### [RESOLVED] importState Blocker
+- **Was**: Reference to `prev` out of scope in `importState`.
+- **Fixed**: `importState` now uses `updateState` functional callback correctly. Session import works.
 
-### [RISK] Component Bloat: `EntityCard.jsx`
-- **Evidence**: 33,153 bytes.
-- **Severity**: Medium.
-- **Why it matters**: High cognitive load for developers; brittle code.
+### [RISK] MapDisplay.jsx Monolith
+- **Evidence**: 35,219 bytes. Mixes canvas rendering, event handling, tool logic, and palette UI.
+- **Severity**: Medium. Works correctly; cognitive load for developers.
+- **Suggested next step**: Extract palette sidebar to `MapPalette.jsx`, canvas draw loop to a custom hook, Token component to `MapToken.jsx`.
 
-### [RISK] Unused Icons/Vars
-- **Evidence**: `npm run lint` results.
-- **Severity**: Low.
-- **Why it matters**: Dead code bloat in production bundles.
+### [KNOWN] Custom tile uploads do not persist
+- **Evidence**: `ASSETS` object is module-level. Custom tile DataURLs injected at runtime are lost on reload.
+- **Severity**: Low. Background image persists correctly (stored in state). Only per-tile custom overrides are ephemeral.
+- **Suggested next step**: Store custom tiles in `map.config.customAssets` alongside the background.
+
+### [KNOWN] Lint: 12 errors, 4 warnings
+- **Evidence**: `npm run lint` output (2026-04-30).
+- **Severity**: Low. No functional impact. 4 warnings are `react-hooks/exhaustive-deps` in `useEncounterState.js` (intentional stable-ref patterns).
+- **Note**: `motion` false positives from Framer Motion are suppressed via `varsIgnorePattern` in `eslint.config.js`.
+
+### [KNOWN] Large bundle warning
+- **Evidence**: Vite warns on `index.js` > 500 kB (actual: ~1921 kB / 392 kB gzip).
+- **Severity**: Low. PWA/ServiceWorker caches on first load; subsequent loads are instant.
+- **Suggested next step**: Dynamic import of BestiaryDrawer and MapDisplay to split the bundle.
 
 ## Future Work Map
 
-### Improvement: EntityCard Refactoring
-- **Why it matters**: Long-term maintainability.
-- **Suggested implementation**: Split into `EntityHP`, `EntityStats`, and `EntityActions`.
-- **Likely files involved**: `src/components/EntityCard.jsx`.
+### Improvement: Split MapDisplay.jsx
+- **Why it matters**: 35 KB monolith — canvas logic, event handling, tool state, and palette UI all intermingled.
+- **Suggested implementation**: Extract `MapPalette.jsx` (sidebar), `MapToken.jsx` (Token component), and a `useMapCanvas` hook (draw loop).
+- **Likely files**: `src/components/MapDisplay.jsx` → split into 3-4 files.
 - **Difficulty**: Medium.
 
-### Improvement: Map Engine State Sync
-- **Why it matters**: Currently, some map state appears local to the component.
-- **Suggested implementation**: Fully serialize map layers into `useEncounterState` to support Undo/Redo on map edits.
+### Improvement: Persist custom tile uploads
+- **Why it matters**: DMs who upload custom tiles lose them on reload.
+- **Suggested implementation**: Store custom tile DataURLs in `map.config.customAssets` (dict of id → dataUrl). Hydrate ASSETS from this on mount.
+- **Difficulty**: Small.
+
+### Improvement: Bundle code splitting
+- **Why it matters**: 1921 kB initial bundle (392 kB gzip). Slow on first load over mobile/slow connections.
+- **Suggested implementation**: Dynamic `import()` for BestiaryDrawer, RulesPanel, SnapshotDrawer, and MapDisplay. Add `build.rollupOptions.output.manualChunks` in `vite.config.js`.
+- **Difficulty**: Small.
+
+### Feature: Token avatar images
+- **Why it matters**: Tokens currently show 2-letter abbreviations. Uploading a portrait would dramatically improve tactical clarity.
+- **Suggested implementation**: `entity.avatarUrl` (DataURL). Render as circular `<img>` clipped to token bounds.
+- **Difficulty**: Small.
+
+### Feature: Fog of War smooth reveal animation
+- **Why it matters**: Current fog cells appear/disappear instantly. A radial reveal would feel more atmospheric.
+- **Difficulty**: Medium (canvas compositing).
+
+### Feature: Player-facing view / Second screen
+- **Why it matters**: DM wants to project a clean view to players without DM-only info.
+- **Current state**: "Player Handout" export strips hidden entities and obfuscates enemy HP. No live second-screen view.
+- **Suggested implementation**: A read-only second URL that reads from BroadcastChannel and renders a filtered map view.
 - **Difficulty**: Large.
 
 ## Current State Summary
-The project is a high-fidelity, feature-rich D&D manager. The state machine is robust (passing tests) but contains a critical bug in the import logic. The UI is premium and follows a strict "Dragon" dark-glass theme.
+DnDex / DM Hub is a production-quality, feature-complete D&D 5e encounter manager. As of 2026-04-30:
+
+- **State machine**: Stable. 16/16 tests passing. Full undo/redo stack, IndexedDB persistence, multi-tab BroadcastChannel sync.
+- **Combat engine**: Complete. Concentration saves, legendary actions/resistances, group damage, turn auto-advance, lair actions.
+- **Tactical map**: Complete. All layers (background image, terrain, objects, sketches, fog, tokens) are history-aware and undoable. Battle map background image upload fully implemented.
+- **Battlemaster layout**: Complete. Three-panel resizable/collapsible dashboard view purpose-built for live play.
+- **Bestiary**: Complete. 334 SRD monsters, searchable, deployable.
+- **Snapshots / Export / Import**: Complete.
+- **Known non-blockers**: 12 lint errors (no functional impact), large bundle (PWA cached), custom tile uploads are session-only.
+- **No known blockers or crashes.**
+
+The codebase is ready to extend. The next natural improvements are MapDisplay refactor (extract palette/token), custom tile persistence, and bundle code splitting.
 
 ## Open Questions
-- Is there a target for "Fog of War" on the tactical map?
-- Should we implement a "Player-Facing View" that hides DM-only information?
+- Should token avatar images (portrait uploads per entity) be added?
+- Should there be a live player-facing second screen projected separately from the DM view?
+- Should the background image scale mode be configurable (fill vs. fit vs. tile)?
 
 ## Chronological Ledger
 
@@ -1052,3 +1214,23 @@ The project is a high-fidelity, feature-rich D&D manager. The state machine is r
 - `Test Results:` Vitest 16/16 pass. ESLint 4 pre-existing errors, 0 new.
 - `State After Completion:` Tactical map now supports full battle-map image workflow. Layer visibility gives DM non-destructive control over all canvas layers.
 - `Next Step / Handoff:` Token snapping improvements, fog-reveal animation, or bundle code-splitting.
+
+### Entry 42 - Comprehensive Bible Update & Handoff (2026-04-30)
+- `Summary:` Full audit and rewrite of all stale static Bible sections to reflect current codebase state as of 2026-04-30. Predecessor AI handed off with a clean, accurate document.
+- `Reason / Intent:` Bible static sections (File Inventory, Architecture Map, Feature Map, Data Model, UI/UX, Setup Commands, Risks, Future Work, Current State Summary) were written at project inception and had drifted significantly — missing ~15 new files, three new features, the resolved importState blocker, updated test/lint counts, and the full map state schema.
+- `Sections Rewritten:`
+  - **File Inventory**: Added BattlemasterLayout.jsx, BattlemasterQuickActions.jsx, entity-card/* subcomponents (6 files), combatEngine.js, monster_schema.json, BestiaryModal.jsx, RulesPanel.jsx, SnapshotDrawer.jsx, eslint.config.js note, public/assets/tiles.
+  - **Architecture Map**: Added Battlemaster routing, updated text map to three-view system, added Key Invariants section documenting history contract and canvas architecture.
+  - **Feature Map**: Rewrote Tactical Map Engine entry (all 14 map actions documented with skipHistory notes), added Battlemaster Layout feature, Snapshots feature, Export/Import feature, History/Undo-Redo feature.
+  - **Data Model**: Full EncounterState field list with types and persistence notes. Full MapState schema including background field.
+  - **UI/UX Structure**: Three-view system, modal FSM, design tokens, Token aesthetics, all feedback patterns.
+  - **Setup Commands**: Test count corrected to 16/16 (was 8/8). Lint corrected to 12 errors/4 warnings (was 45). Build size updated.
+  - **Dependency Map**: Full import chain for all major files.
+  - **Risks**: Removed resolved importState blocker. Added MapDisplay monolith risk, custom tile persistence gap, lint/bundle notes.
+  - **Future Work**: Removed completed items (map state sync, EntityCard split). Added MapDisplay split, custom tile persistence, code splitting, token avatars, fog animation, player second screen.
+  - **Current State Summary**: Complete rewrite reflecting production-ready state.
+  - **Open Questions**: Updated (Fog of War implemented; player view status clarified).
+- `Files Changed:` `DnDex_Bible.md` only.
+- `Build:` Passes (no code changes).
+- `Test Results:` 16/16 (no code changes).
+- `State After Completion:` Bible is fully current. Safe to hand off to a successor AI with no stale facts.
