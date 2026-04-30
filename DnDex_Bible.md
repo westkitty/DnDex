@@ -2017,3 +2017,48 @@ mkdir -p docs/handoffs
   - `Fact:` None.
 - `State After Completion:` Successor prompt is in-repo and ready for Claude handoff.
 - `Next Step / Handoff:` Commit/push docs artifact and verify `HEAD == origin/main`.
+
+### Entry 63 - Hook `exhaustive-deps` Warning Investigation (2026-04-30)
+- `Summary:` Produced a scoped investigation document identifying, analyzing, and making recommendations for the two persistent `react-hooks/exhaustive-deps` lint warnings. No source files were modified.
+- `Reason / Intent:` Both warnings are long-standing non-blockers that required documentation of their risk profile and recommended disposition before any future developer attempts to "fix" them incorrectly.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/MapDisplay.jsx` (lines 760–808)
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js` (lines 70–113)
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/docs/HOOK_WARNING_INVESTIGATION.md` (new)
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md` (this entry)
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git branch --show-current
+git rev-parse HEAD
+git rev-parse origin/main
+git log --oneline -5
+npx vitest run 2>&1 | tail -20
+npm run lint 2>&1 | tail -20
+npm run lint 2>&1 | grep -A3 "exhaustive-deps"
+git add docs/HOOK_WARNING_INVESTIGATION.md DnDex_Bible.md
+git commit -m "docs: add hook exhaustive-deps warning investigation"
+git push origin main
+git rev-parse HEAD
+git rev-parse origin/main
+```
+- `Command Intent:` Confirm baseline parity; validate tests/lint; extract warning details; write investigation doc; commit and push docs-only change; confirm HEAD == origin/main.
+- `Outputs Generated:`
+  - `Fact:` Pre-task baseline: `HEAD == origin/main` at `63b4ff38a5d0281ac0086f14ca472fcf548bcbab`.
+  - `Fact:` Tests: 88/88 pass (8 test files). Lint: 0 errors, 2 warnings (the two under investigation).
+  - `Warning 1:` `MapDisplay.jsx:808` — `Token` drag handler missing `viewOffset.x`, `viewOffset.y`, `zoom`. Risk: LOW. Stale closure only fires if user simultaneously drags token and changes zoom/pan — not a reachable UX path today. Recommended: keep as-is; add deps if drag+zoom UX is ever added.
+  - `Warning 2:` `useEncounterState.js:113` — auto-save debounce missing `state`. Risk: LOW (intentional omission). `lastUpdated` is the canonical save trigger; adding full `state` dep would cause over-eager IndexedDB writes. Recommended: add `eslint-disable-next-line` comment in next source-touching session to document intent.
+  - `Fact:` Investigation doc written to `/Users/andrew/Projects/DM_Hub/docs/HOOK_WARNING_INVESTIGATION.md`.
+- `Decisions:`
+  - `Fact:` Docs-only pass — no source files modified per hard rules in the task prompt.
+  - `Fact:` Both warnings classified as intentional or low-risk; neither requires an immediate code fix.
+  - `Fact:` Recommended adding an `eslint-disable-next-line` comment to `useEncounterState.js:112` in a future source-touching session (not this pass).
+- `Bugs / Blockers:`
+  - `Fact:` No blockers. Both warnings are dormant and well-understood.
+- `Correction:`
+  - `Fact:` None.
+- `State After Completion:` `HEAD == origin/main`. Investigation doc is committed and available at `docs/HOOK_WARNING_INVESTIGATION.md`. Lint baseline unchanged: 0 errors, 2 warnings (both documented).
+- `Next Step / Handoff:` Future source-touching session should add `eslint-disable-next-line react-hooks/exhaustive-deps` with explanation to `useEncounterState.js:112`. If drag+zoom UX is ever introduced, add `viewOffset.x`, `viewOffset.y`, `zoom` to the `Token` effect deps in `MapDisplay.jsx:808`.
