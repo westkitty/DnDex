@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Command, Skull, Book, Zap, Undo, Redo, Plus, UserPlus, Ghost, X, Target } from 'lucide-react';
 import bestiaryData from '../data/bestiary.json';
-import { RULES_DATABASE } from './RulesPanel';
+import { RULES_DATABASE } from '../data/rulesDatabase';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -14,7 +14,7 @@ const CommandPalette = ({ isOpen, onClose, encounter, setView, toggleBestiary, t
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const actions = [
+  const actions = useMemo(() => [
     { id: 'next', name: 'Next Turn', icon: <Zap className="w-4 h-4" />, action: () => encounter.advanceTurn(1), category: 'System' },
     { id: 'prev', name: 'Previous Turn', icon: <Undo className="w-4 h-4" />, action: () => encounter.advanceTurn(-1), category: 'System' },
     { id: 'undo', name: 'Undo Last Action', icon: <Undo className="w-4 h-4" />, action: () => encounter.undo(), category: 'System' },
@@ -25,7 +25,7 @@ const CommandPalette = ({ isOpen, onClose, encounter, setView, toggleBestiary, t
     { id: 'view-list', name: 'Switch to Tactical List', icon: <Command className="w-4 h-4" />, action: () => setView('list'), category: 'Navigation' },
     { id: 'open-bestiary', name: 'Open Bestiary', icon: <Skull className="w-4 h-4" />, action: () => toggleBestiary(), category: 'Navigation' },
     { id: 'open-rules', name: 'Open Rules Grimoire', icon: <Book className="w-4 h-4" />, action: () => toggleRules(), category: 'Navigation' },
-  ];
+  ], [encounter, setView, toggleBestiary, toggleRules]);
 
   const results = useMemo(() => {
     if (!query) return actions.map(a => ({ ...a, type: 'action' }));
@@ -58,23 +58,22 @@ const CommandPalette = ({ isOpen, onClose, encounter, setView, toggleBestiary, t
       }));
 
     return [...filteredActions, ...filteredMonsters, ...filteredRules];
-  }, [query]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
+  }, [actions, encounter, query, toggleRules]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!isOpen) return;
 
       if (e.key === 'ArrowDown') {
+        if (results.length === 0) return;
         e.preventDefault();
         setSelectedIndex(prev => (prev + 1) % results.length);
       } else if (e.key === 'ArrowUp') {
+        if (results.length === 0) return;
         e.preventDefault();
         setSelectedIndex(prev => (prev - 1 + results.length) % results.length);
       } else if (e.key === 'Enter') {
+        if (results.length === 0) return;
         e.preventDefault();
         if (results[selectedIndex]) {
           results[selectedIndex].action();
@@ -113,7 +112,10 @@ const CommandPalette = ({ isOpen, onClose, encounter, setView, toggleBestiary, t
             autoFocus
             placeholder="Search monsters, rules, and actions... (Cmd+K)"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
             className="flex-1 bg-transparent border-none outline-none text-lg font-bold text-slate-100 placeholder:text-slate-600"
           />
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black text-slate-500 uppercase tracking-widest">

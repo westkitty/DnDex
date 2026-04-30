@@ -1,20 +1,13 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info, History, AlertCircle, CheckCircle2, X, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { ToastContext } from './toastContext';
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
-
-const ToastContext = createContext(null);
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) throw new Error("useToast must be used within ToastProvider");
-  return context;
-};
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);

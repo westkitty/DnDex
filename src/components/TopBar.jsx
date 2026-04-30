@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import TacticalAlertStack from './TacticalAlertStack';
-import { useToast } from './ToastProvider';
+import { useToast } from './toastContext';
 import { cn } from './entity-card/entityCardUtils';
 
 /**

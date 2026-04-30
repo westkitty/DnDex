@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   Shield, MoreHorizontal, 
   Brain, Trash2, GripVertical, 
@@ -33,19 +33,6 @@ const EntityCard = ({
   const [dmgInput, setDmgInput] = useState('');
   const [useGroup, setUseGroup] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
-  const prevHpRef = useRef(entity?.hp ?? 0);
-  const [showDamageFlash, setShowDamageFlash] = useState(false);
-
-  // Damage Flash Logic — must be before early return to satisfy Rules of Hooks
-  useEffect(() => {
-    if (!entity) return;
-    if (entity.hp < prevHpRef.current) {
-      setShowDamageFlash(true);
-      const timer = setTimeout(() => setShowDamageFlash(false), 500);
-      return () => clearTimeout(timer);
-    }
-    prevHpRef.current = entity.hp;
-  }, [entity?.hp]);
 
   if (!entity || !entity.id) return null;
 
@@ -159,7 +146,6 @@ const EntityCard = ({
       animate={{ 
         opacity: 1, 
         scale: 1,
-        x: showDamageFlash ? [0, -2, 2, -2, 2, 0] : 0,
         boxShadow: isActive ? "var(--shadow-glow-ether)" : "none"
       }}
       transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}

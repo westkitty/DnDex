@@ -53,16 +53,23 @@ const MapDisplay = ({ encounter }) => {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [isLoadingAssets, setIsLoadingAssets] = useState(true);
-  const [bgImage, setBgImage] = useState(null);
+  const [bgImageVersion, setBgImageVersion] = useState(0);
   const [sketchesVisible, setSketchesVisible] = useState(true);
   const [fogVisible, setFogVisible] = useState(true);
+  const bgImageRef = useRef(null);
 
   // Load background image object when dataUrl changes
   useEffect(() => {
     const dataUrl = map?.background?.dataUrl;
-    if (!dataUrl) { setBgImage(null); return; }
+    if (!dataUrl) {
+      bgImageRef.current = null;
+      return;
+    }
     const img = new Image();
-    img.onload = () => setBgImage(img);
+    img.onload = () => {
+      bgImageRef.current = img;
+      setBgImageVersion(prev => prev + 1);
+    };
     img.src = dataUrl;
   }, [map?.background?.dataUrl]);
 
@@ -96,6 +103,7 @@ const MapDisplay = ({ encounter }) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw background image (bottom-most layer)
+    const bgImage = bgImageRef.current;
     if (bgImage && map?.background?.visible !== false) {
       ctx.save();
       ctx.globalAlpha = map.background?.opacity ?? 1;
@@ -198,7 +206,7 @@ const MapDisplay = ({ encounter }) => {
       });
       ctx.restore();
     }
-  }, [map?.drawing, map?.terrain, map?.objects, map?.config, map?.fog, map?.background, bgImage, currentPath, assetCache, showGrid, pendingTiles, sketchesVisible, fogVisible]);
+  }, [map?.drawing, map?.terrain, map?.objects, map?.config, map?.fog, map?.background, bgImageVersion, currentPath, assetCache, showGrid, pendingTiles, sketchesVisible, fogVisible]);
 
   const view = map?.view || { x: 0, y: 0, zoom: 1 };
 
