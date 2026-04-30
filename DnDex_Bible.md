@@ -1771,3 +1771,36 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` Metadata drift corrected: stable Bible sections now align with modern ledger state and latest verified hash context.
 - `State After Completion:` Reconciliation pass complete; docs and small accessibility gap resolved.
 - `Next Step / Handoff:` Optional follow-up is only the two known `react-hooks/exhaustive-deps` warning investigations if explicitly requested.
+
+### Entry 56 - Custom Tile Persistence Session Start Baseline (2026-04-30)
+- `Summary:` Started a focused, quota-aware pass to implement persistent custom tactical map tile assets across reloads.
+- `Reason / Intent:` Resolve user-facing data loss where custom uploaded tactical assets disappear after reload.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git log --oneline -8
+git rev-parse HEAD
+git rev-parse origin/main
+sed -n '1,260p' DnDex_Bible.md
+grep -n "custom tile\|custom asset\|ASSETS\|MapDisplay\|Known non-blockers\|Current State Summary" DnDex_Bible.md
+```
+- `Command Intent:` Verify baseline repository state and reconfirm known custom tile persistence gap from authoritative Bible before code changes.
+- `Outputs Generated:`
+  - `Fact:` Current pushed commit before this pass: `a8fbe07f5be93649a41cb11cd65bf903dfc8ae9a`.
+  - `Fact:` `HEAD == origin/main` at baseline.
+  - `Fact:` Only pre-existing unrelated untracked asset files/directories are present.
+  - `Fact:` Selected scope is limited to custom tactical asset persistence and required validation/documentation.
+- `Decisions:`
+  - `Fact:` No feature expansion or broad refactor in this session.
+  - `Fact:` No changes to `MapDisplay` pan/zoom/token alignment logic.
+- `Bugs / Blockers:`
+  - `Fact:` Known non-blocker being addressed: custom tile uploads are session-only.
+- `Correction:`
+  - `Fact:` None.
+- `State After Completion:` Baseline verified and scope locked to custom tile persistence.
+- `Next Step / Handoff:` Inspect current custom asset upload flow in `MapDisplay.jsx` and map config/action handling in `useEncounterState.js`.
