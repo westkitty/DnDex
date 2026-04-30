@@ -1507,3 +1507,50 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` Prior dock import behavior silently swallowed parse errors; corrected.
 - `State After Completion:` TopBar and bottom dock import flows now provide equivalent user feedback on success/failure states.
 - `Next Step / Handoff:` Implement Phase 4 keyboard/preset panel recovery controls respecting `layoutLocked`.
+
+### Entry 50 - Phase 4 Dockable Panel Keyboard/Preset Recovery Controls (2026-04-30)
+- `Summary:` Added practical floating panel recovery controls (Reset Position, preset sizes, directional nudge) and lock-aware behavior without changing encounter-state architecture.
+- `Reason / Intent:` Improve deterministic panel recovery and keyboard-accessible layout controls while preserving drag/resize/undock workflows.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterLayout.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/DockablePanel.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/LayoutControls.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/AppToolRail.jsx`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterLayout.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/DockablePanel.jsx`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+sed -n '1,380p' src/components/BattlemasterLayout.jsx
+sed -n '1,420p' src/components/workspace/DockablePanel.jsx
+sed -n '1,320p' src/components/workspace/LayoutControls.jsx
+sed -n '1,360p' src/components/AppToolRail.jsx
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Implement required recovery controls and verify no regression in core workspace interactions.
+- `Outputs Generated:`
+  - `Fact:` Added floating panel preset size controls: `Compact`, `Standard`, `Large`.
+  - `Fact:` Added floating panel nudge controls with accessible labels: `Nudge Up`, `Nudge Down`, `Nudge Left`, `Nudge Right`.
+  - `Fact:` Added `Reset Position` behavior as a dedicated action (`onResetPosition`) distinct from redock.
+  - `Fact:` Added lock-aware disabled behavior/titles for undock, redock, reset position, preset size, and nudge controls.
+  - `Fact:` `Reset Layout` confirmation copy remains: `Reset workspace layout? Encounter data will not change.`
+  - `Fact:` Minimized panel recovery copy remains on tool rail title: `Panel minimized. Restore it from the tool rail.`
+  - `Fact:` Validation results:
+    - `npm run build`: PASS
+    - `npx vitest run`: PASS (`16/16`)
+    - `npm run lint`: PASS with warnings only (`0 errors, 2 warnings`)
+    - `node scripts/smoke/battlemaster-dockable.mjs`: PASS (`Smoke pass: 20 checks`)
+- `Decisions:`
+  - `Fact:` Controls were implemented as explicit buttons instead of keyboard-drag mechanics to keep interaction deterministic and low risk.
+  - `Fact:` Layout-only actions remain isolated in Battlemaster workspace local UI state and do not write encounter/combat/map history.
+- `Bugs / Blockers:`
+  - `Fact:` No blocker in this phase.
+- `Correction:`
+  - `Fact:` None.
+- `State After Completion:` Floating panel recovery is now keyboard-reachable with discrete, labeled controls.
+- `Next Step / Handoff:` Implement Phase 5 deterministic offscreen panel recovery after viewport changes.

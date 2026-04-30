@@ -16,6 +16,11 @@ const defaultPanels = () => ({
 });
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const PANEL_PRESETS = {
+  compact: { width: 280, height: 220 },
+  standard: { width: 360, height: 320 },
+  large: { width: 460, height: 430 }
+};
 
 const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRules, toggleSnapshots }) => {
   const [panels, setPanels] = useState(defaultPanels);
@@ -76,6 +81,58 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
 
   const minimizePanel = (id) => updatePanel(id, { minimized: true });
   const restorePanel = (id) => updatePanel(id, { minimized: false, collapsed: false });
+  const resetPanelPosition = (id) => {
+    if (layoutLocked) return;
+    setPanels((prev) => {
+      const current = prev[id];
+      if (!current) return prev;
+      const defaults = defaultPanels()[id];
+      if (current.docked) return { ...prev, [id]: { ...current, collapsed: defaults.collapsed, minimized: false } };
+      return {
+        ...prev,
+        [id]: {
+          ...current,
+          collapsed: false,
+          minimized: false,
+          left: defaults.left,
+          top: defaults.top,
+          width: defaults.width,
+          height: defaults.height
+        }
+      };
+    });
+  };
+
+  const applyPresetSize = (id, preset) => {
+    if (layoutLocked) return;
+    const size = PANEL_PRESETS[preset];
+    if (!size) return;
+    updatePanel(id, { width: size.width, height: size.height, collapsed: false, minimized: false });
+  };
+
+  const nudgePanel = (id, direction) => {
+    if (layoutLocked) return;
+    const delta = 24;
+    const offset = {
+      up: { x: 0, y: -delta },
+      down: { x: 0, y: delta },
+      left: { x: -delta, y: 0 },
+      right: { x: delta, y: 0 }
+    }[direction];
+    if (!offset) return;
+    setPanels((prev) => {
+      const current = prev[id];
+      if (!current || current.docked) return prev;
+      return {
+        ...prev,
+        [id]: {
+          ...current,
+          left: current.left + offset.x,
+          top: current.top + offset.y
+        }
+      };
+    });
+  };
 
   const resetLayout = () => {
     if (!window.confirm('Reset workspace layout? Encounter data will not change.')) return;
@@ -141,8 +198,10 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onMinimize={minimizePanel}
                   onRestore={restorePanel}
                   onRedock={redockPanel}
-                  onReset={redockPanel}
+                  onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}
+                  onPresetSize={applyPresetSize}
+                  onNudge={nudgePanel}
                   layoutLocked={layoutLocked}
                   className="h-full"
                 >
@@ -200,8 +259,10 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onMinimize={minimizePanel}
                   onRestore={restorePanel}
                   onRedock={redockPanel}
-                  onReset={redockPanel}
+                  onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}
+                  onPresetSize={applyPresetSize}
+                  onNudge={nudgePanel}
                   layoutLocked={layoutLocked}
                   className="h-full"
                 >
@@ -231,8 +292,10 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onMinimize={minimizePanel}
                   onRestore={restorePanel}
                   onRedock={redockPanel}
-                  onReset={redockPanel}
+                  onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}
+                  onPresetSize={applyPresetSize}
+                  onNudge={nudgePanel}
                   layoutLocked={layoutLocked}
                   className="h-full"
                 >
@@ -296,8 +359,10 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onMinimize={minimizePanel}
                   onRestore={restorePanel}
                   onRedock={redockPanel}
-                  onReset={redockPanel}
+                  onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}
+                  onPresetSize={applyPresetSize}
+                  onNudge={nudgePanel}
                   layoutLocked={layoutLocked}
                 >
                   {content}

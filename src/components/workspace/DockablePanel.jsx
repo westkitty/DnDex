@@ -16,8 +16,10 @@ const DockablePanel = ({
   onMinimize,
   onRestore,
   onRedock,
-  onReset,
+  onResetPosition,
   onUndock,
+  onPresetSize,
+  onNudge,
   layoutLocked,
   children,
   className
@@ -118,6 +120,7 @@ const DockablePanel = ({
               aria-label="Undock Panel"
               title="Undock Panel"
               onClick={() => onUndock(id)}
+              disabled={layoutLocked}
               className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -127,6 +130,7 @@ const DockablePanel = ({
               aria-label="Redock Panel"
               title="Redock Panel"
               onClick={() => onRedock(id)}
+              disabled={layoutLocked}
               className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
             >
               <ArrowDownToLine className="w-3.5 h-3.5" />
@@ -135,8 +139,9 @@ const DockablePanel = ({
           <button
             aria-label="Reset Position"
             title="Reset Position"
-            onClick={() => onReset(id)}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
+            onClick={() => onResetPosition(id)}
+            disabled={layoutLocked}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -152,6 +157,81 @@ const DockablePanel = ({
       </header>
 
       {!state.collapsed && <div className="h-full overflow-hidden">{children}</div>}
+
+      {!state.docked && !state.collapsed && (
+        <div className="absolute left-2 bottom-2 z-20 flex items-center gap-1 flex-wrap max-w-[75%]">
+          <button
+            type="button"
+            aria-label="Compact"
+            title={layoutLocked ? 'Unlock Layout to resize floating panels.' : 'Compact'}
+            disabled={layoutLocked}
+            onClick={() => onPresetSize(id, 'compact')}
+            className="px-2 py-1 rounded bg-black/40 border border-white/15 text-[10px] font-black uppercase tracking-widest text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Compact
+          </button>
+          <button
+            type="button"
+            aria-label="Standard"
+            title={layoutLocked ? 'Unlock Layout to resize floating panels.' : 'Standard'}
+            disabled={layoutLocked}
+            onClick={() => onPresetSize(id, 'standard')}
+            className="px-2 py-1 rounded bg-black/40 border border-white/15 text-[10px] font-black uppercase tracking-widest text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Standard
+          </button>
+          <button
+            type="button"
+            aria-label="Large"
+            title={layoutLocked ? 'Unlock Layout to resize floating panels.' : 'Large'}
+            disabled={layoutLocked}
+            onClick={() => onPresetSize(id, 'large')}
+            className="px-2 py-1 rounded bg-black/40 border border-white/15 text-[10px] font-black uppercase tracking-widest text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Large
+          </button>
+          <button
+            type="button"
+            aria-label="Nudge Up"
+            title={layoutLocked ? 'Unlock Layout to move floating panels.' : 'Nudge Up'}
+            disabled={layoutLocked}
+            onClick={() => onNudge(id, 'up')}
+            className="px-1.5 py-1 rounded bg-black/40 border border-white/15 text-[10px] font-black text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            aria-label="Nudge Down"
+            title={layoutLocked ? 'Unlock Layout to move floating panels.' : 'Nudge Down'}
+            disabled={layoutLocked}
+            onClick={() => onNudge(id, 'down')}
+            className="px-1.5 py-1 rounded bg-black/40 border border-white/15 text-[10px] font-black text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ↓
+          </button>
+          <button
+            type="button"
+            aria-label="Nudge Left"
+            title={layoutLocked ? 'Unlock Layout to move floating panels.' : 'Nudge Left'}
+            disabled={layoutLocked}
+            onClick={() => onNudge(id, 'left')}
+            className="px-1.5 py-1 rounded bg-black/40 border border-white/15 text-[10px] font-black text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            aria-label="Nudge Right"
+            title={layoutLocked ? 'Unlock Layout to move floating panels.' : 'Nudge Right'}
+            disabled={layoutLocked}
+            onClick={() => onNudge(id, 'right')}
+            className="px-1.5 py-1 rounded bg-black/40 border border-white/15 text-[10px] font-black text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            →
+          </button>
+        </div>
+      )}
 
       {!state.docked && !state.collapsed && !layoutLocked && (
         <button
