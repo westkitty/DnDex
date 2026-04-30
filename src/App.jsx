@@ -8,6 +8,7 @@ import BestiaryModal from './components/BestiaryModal';
 import CommandPalette from './components/CommandPalette';
 import SnapshotDrawer from './components/SnapshotDrawer';
 import { WorkspaceProvider } from './components/workspace/WorkspaceProvider';
+import GatewaySplash from './components/gateway/GatewaySplash';
 import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { ToastProvider } from './components/ToastProvider';
 import { useToast } from './components/toastContext';
@@ -281,11 +282,15 @@ return (
  * Wraps Content with Global Providers & Boundaries.
  */
 function App() {
+  const [showGateway, setShowGateway] = useState(true);
   return (
     <AppErrorBoundary>
       <ToastProvider>
         <WorkspaceProvider>
           <AppContent />
+          {showGateway && (
+            <GatewaySplash onComplete={() => setShowGateway(false)} />
+          )}
         </WorkspaceProvider>
       </ToastProvider>
     </AppErrorBoundary>

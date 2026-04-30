@@ -2198,3 +2198,100 @@ git rev-parse HEAD && git rev-parse origin/main
   - `Fact:` None.
 - `State After Completion:` `DnDex` is now the visible primary product title in the app UI and README. `DM_Hub` appears as the subtitle below the title. `useEncounterState.test.js` describe label uses `DnDex`. Bible has a Naming Policy stable section. Historical ledger entries are unchanged. HEAD == origin/main.
 - `Next Step / Handoff:` PROCEED TO MANDATORY DnDex / DM_Hub GATEWAY SPLASH IMPLEMENTATION — the naming foundation is now clean and consistent. Next: implement a gateway/splash screen that presents the DnDex title and DM_Hub subtitle to users on first load or app entry.
+
+### Entry 66 - Mandatory DnDex Gateway Splash Implementation (2026-04-30)
+- `Summary:` Completed the mandatory DnDex / DM_Hub gateway splash and updated the dockable Battlemaster smoke harness to enter through the gateway before existing workspace checks.
+- `Reason / Intent:` Add a mandatory app-open gateway splash derived from Vault Architect without implementing onboarding, persistence, bundle splitting, or map/state refactors.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/gateway/GatewaySplash.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/index.css`
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`
+  - `/tmp/dndex-vault-reference/Vault_Architect/index.html`
+  - `/tmp/dndex-vault-reference/Vault_Architect/review_app.html`
+  - `/tmp/dndex-vault-reference/Vault_Architect/icon.svg`
+  - `/tmp/dndex-vault-reference/Vault_Architect/vault_architect_offline.html`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/gateway/GatewaySplash.jsx`
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+pwd
+git status --short
+git branch --show-current
+git remote -v
+git rev-parse HEAD
+git rev-parse origin/main
+git log --oneline -12
+sed -n '1,240p' DnDex_Bible.md
+tail -n 320 DnDex_Bible.md
+sed -n '1,260p' src/App.jsx
+find src/components -maxdepth 3 -type f | sort | grep -E "gateway|Gateway|Splash|TopBar|workspace" || true
+sed -n '1,320p' src/components/gateway/GatewaySplash.jsx
+sed -n '1,260p' src/index.css
+sed -n '1,360p' scripts/smoke/battlemaster-dockable.mjs
+git diff --stat
+git diff --name-only
+git diff -- src/App.jsx scripts/smoke/battlemaster-dockable.mjs src/components/gateway/GatewaySplash.jsx src/components/gateway/gateway.css src/index.css DnDex_Bible.md || true
+git diff --cached --stat
+git diff --cached --name-only
+mkdir -p /tmp/dndex-vault-reference
+rm -rf /tmp/dndex-vault-reference/Vault_Architect
+git clone https://github.com/westkitty/Vault_Architect.git /tmp/dndex-vault-reference/Vault_Architect
+find . -maxdepth 2 -type f | sort
+sed -n '1,260p' index.html || true
+sed -n '1,260p' review_app.html || true
+sed -n '1,220p' icon.svg || true
+grep -Rni "keyframes|animation|animate|glyph|sigil|pulse|breath|scale|transform|transition|svg|canvas|requestAnimationFrame|click|enter|portal|mask" . | head -n 260
+grep -n "intro-overlay|intro-sigil|skip-intro|startExperience|keydown|sigil-spin|skip-pulse" vault_architect_offline.html | head -n 120
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Recover actual repo state; verify latest Bible entry; inspect Claude's in-progress gateway work; ground the glyph against Vault Architect; validate build, tests, lint, and smoke; debug gateway-specific smoke behavior only.
+- `Outputs Generated:`
+  - `Fact:` Pre-task baseline: `HEAD == origin/main` at `bde4c0c316d5809b5f7a982e380c77adb411c4f7`.
+  - `Fact:` Repo was dirty with expected tracked gateway files (`src/App.jsx`, `scripts/smoke/battlemaster-dockable.mjs`) and expected untracked gateway directory (`src/components/gateway/`). Other untracked paths were pre-existing `.claude/`, asset zips, `public/assets/`, and `temp_assets/`.
+  - `Fact:` Latest Bible entry before this pass was Entry 65.
+  - `Fact:` `npm run build` PASS after final source changes. Output remained a single large chunk with the known Vite chunk-size warning; no bundle splitting was performed.
+  - `Fact:` `npm run lint` PASS with `0 errors, 8 warnings` — the same two main hook dependency warnings plus `.claude/worktrees` copies.
+  - `Fact:` `npx vitest run` had transient failures in untracked `.claude/worktrees` hook test copies and one shared-state main failure during a parallel validation attempt; final exact rerun PASS (`8 passed`, `88/88`).
+  - `Fact:` Smoke initially failed on gateway detach timing/activation while stabilizing the new gateway checks; final smoke PASS (`Smoke pass: 28 checks`).
+- `Vault Architect Findings:`
+  - `Fact:` `index.html` redirects immediately to `vault_architect_offline.html`.
+  - `Fact:` `icon.svg` contains the D20-style hexagonal lattice: rounded square dark background, radial glow, hex outline, center spokes, equator line, vertex dots, and center glow/dot.
+  - `Fact:` `vault_architect_offline.html` contains `#intro-screen`, `#intro-card`, `.intro-sigil`, `.intro-skip`, `@keyframes sigil-spin`, and `@keyframes skip-pulse`.
+  - `Fact:` Source intro behavior is click-to-dismiss on `introScreen`; it does not contain the requested DnDex threshold dilation/status-line sequence.
+  - `Decision:` Recreated the visible glyph/lattice in React SVG, adapted colors to DnDex, preserved the 14s deliberate sigil rotation and 2.6s affordance pulse, and added the DnDex-specific scale dilation/status sequence instead of copying the offline HTML blob.
+- `Decisions:`
+  - `Fact:` Gateway is mandatory every app open via `const [showGateway, setShowGateway] = useState(true)` in `App.jsx`.
+  - `Fact:` Gateway dismissal is UI-only app-shell state; it is not written to encounter state, `localStorage`, or IndexedDB.
+  - `Fact:` Gateway is not onboarding and has no "never show again" path.
+  - `Fact:` Gateway displays `DnDex` and `DM_Hub`, exposes `data-testid="gateway-splash"`, and uses `data-testid="gateway-enter"` with `aria-label="Enter DnDex workspace"`.
+  - `Fact:` Click, Enter, and Space all activate entry. Native DOM listeners were added on the gateway button to avoid delegated-event timing issues during the animated splash.
+  - `Fact:` Reduced motion disables idle rotation/pulse and uses a shorter opacity/status reveal rather than large dilation.
+  - `Fact:` Smoke uses stable gateway selectors, isolated keyboard contexts, service workers blocked for deterministic preview testing, and a gateway-scoped DOM click after visible/enabled checks.
+- `Bugs / Blockers:`
+  - `Fact:` Gateway-specific smoke initially timed out waiting for detach because the animated entry path and headless preview timing were less stable than the nominal animation duration.
+  - `Fact:` A diagnostic preview confirmed production gateway click did enter and unmount; final smoke timeout was raised to 15s for gateway detach only.
+  - `Fact:` Vitest showed transient `.claude/worktrees` shared-state failures before a final exact pass; no hook source was edited.
+- `Correction:`
+  - `Fact:` Added button focus on gateway mount.
+  - `Fact:` Added native pointer/mouse/click/key listeners on the gateway button in addition to React handlers.
+  - `Fact:` Updated smoke to validate gateway title/subtitle, click entry, Enter entry, Space entry, and workspace availability before continuing existing checks.
+- `State After Completion:`
+  - `Fact:` Gateway appears every app open and is not persisted.
+  - `Fact:` No encounter state touched.
+  - `Fact:` No undo/redo behavior touched.
+  - `Fact:` No onboarding implemented.
+  - `Fact:` No bundle splitting performed.
+  - `Fact:` No `MapDisplay.jsx` refactor performed.
+  - `Fact:` No `useEncounterState.js` edits performed.
+  - `Fact:` `src/index.css` and `src/components/gateway/gateway.css` were not changed; no separate gateway CSS file was needed.
+- `Next Step / Handoff:` Commit and push `feat: add mandatory DnDex gateway splash`; then verify `HEAD == origin/main`. Recommended next engineering step after this pass: `Proceed to gateway polish pass`.

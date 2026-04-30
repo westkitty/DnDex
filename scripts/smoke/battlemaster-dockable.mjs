@@ -67,7 +67,7 @@ const runSmoke = async () => {
 
   const preview = await startPreviewServer();
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+  const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, serviceWorkers: 'block' });
   const page = await context.newPage();
 
   page.on('console', (msg) => {
@@ -76,9 +76,68 @@ const runSmoke = async () => {
   page.on('pageerror', (err) => results.pageErrors.push(String(err)));
 
   try {
+    const verifyGatewayKeyboardEntry = async (keyName) => {
+      const keyboardContext = await browser.newContext({ viewport: { width: 1600, height: 1000 }, serviceWorkers: 'block' });
+      const keyboardPage = await keyboardContext.newPage();
+      keyboardPage.on('console', (msg) => {
+        if (msg.type() === 'error') results.consoleErrors.push(msg.text());
+      });
+      keyboardPage.on('pageerror', (err) => results.pageErrors.push(String(err)));
+
+      try {
+        await keyboardPage.goto(BASE_URL, { waitUntil: 'networkidle' });
+        const keyboardGateway = keyboardPage.locator('[data-testid="gateway-splash"]');
+        const keyboardEnter = keyboardPage.locator('[data-testid="gateway-enter"]');
+        await keyboardGateway.waitFor({ state: 'visible', timeout: 8000 });
+        await keyboardEnter.waitFor({ state: 'visible', timeout: 8000 });
+        await keyboardPage.waitForFunction(() => {
+          const enter = document.querySelector('[data-testid="gateway-enter"]');
+          return enter && !enter.disabled;
+        });
+        await keyboardPage.waitForTimeout(150);
+        await keyboardEnter.focus();
+        await keyboardEnter.press(keyName);
+        await keyboardPage.waitForSelector('[data-testid="gateway-splash"]', { state: 'detached', timeout: 15000 });
+        ok(`gateway accepts ${keyName} key`, true);
+      } catch (error) {
+        ok(`gateway accepts ${keyName} key`, false, String(error));
+      } finally {
+        await keyboardContext.close();
+      }
+    };
+
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 
     ok('app loads', await page.locator('body').isVisible());
+
+    // Gateway: must appear on every open; click through before continuing workspace checks.
+    const gatewaySplash = page.locator('[data-testid="gateway-splash"]');
+    const gatewayVisible = await gatewaySplash.isVisible().catch(() => false);
+    ok('gateway appears on open', gatewayVisible);
+    ok('gateway displays DnDex title', await gatewaySplash.getByText('DnDex', { exact: true }).isVisible().catch(() => false));
+    ok('gateway displays DM_Hub subtitle', await gatewaySplash.getByText('DM_Hub', { exact: true }).isVisible().catch(() => false));
+    if (gatewayVisible) {
+      const gatewayEnter = page.locator('[data-testid="gateway-enter"]');
+      await gatewayEnter.waitFor({ state: 'visible', timeout: 8000 });
+      await page.waitForFunction(() => {
+        const enter = document.querySelector('[data-testid="gateway-enter"]');
+        return enter && !enter.disabled;
+      });
+      await page.waitForTimeout(150);
+      ok('gateway enter control visible', await gatewayEnter.isVisible().catch(() => false));
+      ok('gateway enter control enabled', await gatewayEnter.isEnabled().catch(() => false));
+      // DOM click keeps the workaround scoped to the animated gateway control.
+      await gatewayEnter.evaluate((button) => button.click());
+      await page.waitForSelector('[data-testid="gateway-splash"]', { state: 'detached', timeout: 15000 });
+      ok('gateway dismisses after enter', true);
+    } else {
+      ok('gateway dismisses after enter', false, 'Gateway was not visible on load');
+    }
+
+    await verifyGatewayKeyboardEntry('Enter');
+    await verifyGatewayKeyboardEntry('Space');
+
+    await page.getByTitle('Battlemaster — Map + Panels').waitFor({ state: 'visible', timeout: 8000 });
     await page.waitForSelector('canvas', { timeout: 10000 });
     ok('map canvas renders', await page.locator('canvas').isVisible());
 
