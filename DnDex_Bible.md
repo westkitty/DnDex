@@ -2295,3 +2295,46 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` No `useEncounterState.js` edits performed.
   - `Fact:` `src/index.css` and `src/components/gateway/gateway.css` were not changed; no separate gateway CSS file was needed.
 - `Next Step / Handoff:` Commit and push `feat: add mandatory DnDex gateway splash`; then verify `HEAD == origin/main`. Recommended next engineering step after this pass: `Proceed to gateway polish pass`.
+
+### Entry 67 - Bundle Code Splitting Pass (2026-04-30)
+- `Summary:` Implemented bundle code splitting via React lazy/Suspense and Vite manualChunks.
+- `Reason / Intent:` Reduce the initial JavaScript payload by dynamically importing heavy or route/modal-specific components while preserving all behavior.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/vite.config.js`
+  - `/Users/andrew/Projects/DM_Hub/package.json`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/vite.config.js`
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+\`\`\`bash
+npm run build
+find dist/assets -maxdepth 1 -type f | sort
+ls -lh dist/assets | sort
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+\`\`\`
+- `Command Intent:` Verify code splitting implementation, check bundle sizes before and after, validate application stability and check for any regressions via lint and test scripts.
+- `Outputs Generated:`
+  - `Fact:` Build PASS.
+  - `Fact:` Vitest PASS (88/88).
+  - `Fact:` Lint PASS (0 errors, 8 warnings).
+  - `Fact:` Smoke PASS (28 checks, gateway behavior preserved).
+- `Bundle Findings:`
+  - Before: `index-B3OQH893.js` was 1,944.78 kB.
+  - After: Main app chunk is ~575.55 kB (`index-BeNx_nEC.js`). Multiple semantic chunks extracted (e.g. `BattlemasterLayout`, `RulesPanel`, `vendor-react`).
+  - `Fact:` Vite still emits a large chunk warning for `vendor-icons` and `bestiary` chunks, as they remain > 500kB.
+- `Decisions:`
+  - `Fact:` Implemented React lazy and Suspense for `BattlemasterLayout`, `BestiaryModal`, `RulesPanel`, `SnapshotDrawer`, and `MainDisplay`.
+  - `Fact:` Modified `vite.config.js` to extract specific `node_modules` into manual chunks (`vendor-react`, `vendor-motion`, `vendor-icons`).
+  - `Fact:` Updated smoke test to appropriately wait for Suspense-mounted components (`RulesPanel`, `SnapshotDrawer`) to resolve visibility assertions correctly.
+- `Bugs / Blockers:`
+  - `Fact:` Initial smoke test failure due to immediate visibility checks on Suspense-wrapped lazy components.
+- `Correction:`
+  - `Fact:` Added brief `waitFor` visibility delays in `scripts/smoke/battlemaster-dockable.mjs` before assertions, resolving the failures.
+- `State After Completion:` Bundle code splitting implemented. Gateway behavior preserved. No onboarding implemented. No encounter state touched. No undo/redo touched. No `useEncounterState.js` edits. No `MapDisplay.jsx` refactor. Build, tests, lint, and smoke all pass.
+- `Next Step / Handoff:` Manual gateway + module-load visual check

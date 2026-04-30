@@ -1,20 +1,29 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { useEncounterState } from './hooks/useEncounterState';
-import MainDisplay from './components/MainDisplay';
-import BattlemasterLayout from './components/BattlemasterLayout';
 import TopBar from './components/TopBar';
-import RulesPanel from './components/RulesPanel';
-import BestiaryModal from './components/BestiaryModal';
-import CommandPalette from './components/CommandPalette';
-import SnapshotDrawer from './components/SnapshotDrawer';
 import { WorkspaceProvider } from './components/workspace/WorkspaceProvider';
 import GatewaySplash from './components/gateway/GatewaySplash';
 import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { ToastProvider } from './components/ToastProvider';
+import CommandPalette from './components/CommandPalette';
 import { useToast } from './components/toastContext';
 import { RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+
+const MainDisplay = lazy(() => import('./components/MainDisplay'));
+const BattlemasterLayout = lazy(() => import('./components/BattlemasterLayout'));
+const RulesPanel = lazy(() => import('./components/RulesPanel'));
+const BestiaryModal = lazy(() => import('./components/BestiaryModal'));
+const SnapshotDrawer = lazy(() => import('./components/SnapshotDrawer'));
+
+function ModuleFallback({ label = 'Loading DnDex module…' }) {
+  return (
+    <div className="flex min-h-[220px] items-center justify-center text-sm text-slate-400">
+      {label}
+    </div>
+  );
+}
 
 /**
  * UTILITIES & DESIGN TOKENS
@@ -180,67 +189,77 @@ return (
         />
         
         <main className="flex flex-1 overflow-hidden relative z-10">
-          {view === UI_VIEWS.BATTLEMASTER ? (
-            <BattlemasterLayout
-              encounter={encounter}
-              activeEntity={activeEntity}
-              toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
-              toggleRules={() => setActiveModal(UI_MODALS.RULES)}
-              toggleSnapshots={() => setActiveModal(UI_MODALS.SNAPSHOTS)}
-            />
-          ) : (
-            <MainDisplay
-              encounter={encounter}
-              view={view}
-              activeEntity={activeEntity}
-              toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
-            />
-          )}
+          <Suspense fallback={<ModuleFallback label="Loading layout..." />}>
+            {view === UI_VIEWS.BATTLEMASTER ? (
+              <BattlemasterLayout
+                encounter={encounter}
+                activeEntity={activeEntity}
+                toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
+                toggleRules={() => setActiveModal(UI_MODALS.RULES)}
+                toggleSnapshots={() => setActiveModal(UI_MODALS.SNAPSHOTS)}
+              />
+            ) : (
+              <MainDisplay
+                encounter={encounter}
+                view={view}
+                activeEntity={activeEntity}
+                toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
+              />
+            )}
+          </Suspense>
           
           <AnimatePresence mode="wait">
             {activeModal === UI_MODALS.RULES && (
-              <RulesPanel 
-                key="modal-rules"
-                encounter={encounter} 
-                onClose={() => {
-                  setActiveModal(UI_MODALS.NONE);
-                  setRulesQuery('');
-                }} 
-                initialQuery={rulesQuery}
-              />
+              <Suspense key="suspense-rules" fallback={<ModuleFallback label="Loading Rules..." />}>
+                <RulesPanel 
+                  key="modal-rules"
+                  encounter={encounter} 
+                  onClose={() => {
+                    setActiveModal(UI_MODALS.NONE);
+                    setRulesQuery('');
+                  }} 
+                  initialQuery={rulesQuery}
+                />
+              </Suspense>
             )}
             {activeModal === UI_MODALS.BESTIARY && (
-              <BestiaryModal 
-                key="modal-bestiary"
-                onClose={() => setActiveModal(UI_MODALS.NONE)} 
-                onAdd={(monster) => {
-                  encounter.addEntityFromTemplate(monster);
-                  setActiveModal(UI_MODALS.NONE);
-                  showToast(`Deployed ${monster.name} to the field.`, 'info');
-                }}
-              />
+              <Suspense key="suspense-bestiary" fallback={<ModuleFallback label="Loading Bestiary..." />}>
+                <BestiaryModal 
+                  key="modal-bestiary"
+                  onClose={() => setActiveModal(UI_MODALS.NONE)} 
+                  onAdd={(monster) => {
+                    encounter.addEntityFromTemplate(monster);
+                    setActiveModal(UI_MODALS.NONE);
+                    showToast(`Deployed ${monster.name} to the field.`, 'info');
+                  }}
+                />
+              </Suspense>
             )}
             {activeModal === UI_MODALS.SNAPSHOTS && (
-              <SnapshotDrawer 
-                key="modal-snapshots"
-                isOpen={true}
-                onClose={() => setActiveModal(UI_MODALS.NONE)}
-                state={state}
-                saveSnapshot={encounter.saveSnapshot}
-                loadSnapshot={encounter.loadSnapshot}
-                deleteSnapshot={encounter.deleteSnapshot}
-              />
+              <Suspense key="suspense-snapshots" fallback={<ModuleFallback label="Loading Snapshots..." />}>
+                <SnapshotDrawer 
+                  key="modal-snapshots"
+                  isOpen={true}
+                  onClose={() => setActiveModal(UI_MODALS.NONE)}
+                  state={state}
+                  saveSnapshot={encounter.saveSnapshot}
+                  loadSnapshot={encounter.loadSnapshot}
+                  deleteSnapshot={encounter.deleteSnapshot}
+                />
+              </Suspense>
             )}
             {activeModal === UI_MODALS.COMMAND && (
-              <CommandPalette
-                key="modal-command"
-                isOpen={true}
-                onClose={() => setActiveModal(UI_MODALS.NONE)}
-                encounter={encounter}
-                setView={setView}
-                toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
-                toggleRules={handleOpenRules}
-              />
+              <Suspense key="suspense-command" fallback={<ModuleFallback label="Loading Command Palette..." />}>
+                <CommandPalette
+                  key="modal-command"
+                  isOpen={true}
+                  onClose={() => setActiveModal(UI_MODALS.NONE)}
+                  encounter={encounter}
+                  setView={setView}
+                  toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
+                  toggleRules={handleOpenRules}
+                />
+              </Suspense>
             )}
           </AnimatePresence>
         </main>

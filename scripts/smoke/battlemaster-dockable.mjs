@@ -201,10 +201,12 @@ const runSmoke = async () => {
     ok('view switching works', true);
 
     await page.getByTitle('Rules Reference').click();
+    await page.locator('text=Rules Grimoire').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
     ok('rules opens', await page.locator('text=Rules Grimoire').isVisible());
     await page.keyboard.press('Escape');
 
     await page.getByTitle('Snapshots').click();
+    await page.locator('aside:has-text("Chronological Archives") input[placeholder="Snapshot label..."]').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
     const snapshotOpen = await page
       .locator('aside:has-text("Chronological Archives") input[placeholder="Snapshot label..."]')
       .isVisible()
