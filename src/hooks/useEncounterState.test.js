@@ -265,4 +265,124 @@ describe('DM Hub State Machine Harness', () => {
     expect(result.current.state.history.length).toBe(initialHistoryLength);
     expect(result.current.canRedo).toBe(false); // Should not crash
   });
+
+  test('Bulk damage applies correctly with individual amounts', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => {
+      result.current.addEntity(false); // ID 1
+      result.current.addEntity(false); // ID 2
+    });
+
+    const id1 = result.current.state.entities[0].id;
+    const id2 = result.current.state.entities[1].id;
+
+    act(() => {
+      result.current.applyBulkDamage({
+        [id1]: 5,
+        [id2]: 8
+      }, 'Necrotic', 'Shadow Wave');
+    });
+
+    expect(result.current.state.entities.find(e => e.id === id1).hp).toBe(5);
+    expect(result.current.state.entities.find(e => e.id === id2).hp).toBe(2);
+    expect(result.current.state.logs[0].message).toBe('Shadow Wave');
+  });
+});
+
+describe('Map History', () => {
+  test('commitTerrain creates a history entry and undo reverts it', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    const initialPointer = result.current.state.historyPointer;
+
+    act(() => {
+      result.current.commitTerrain({ '2,3': 'dirt_path', '2,4': 'dirt_path' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.map.terrain['2,3']).toBe('dirt_path');
+      expect(result.current.state.historyPointer).toBeGreaterThan(initialPointer);
+    });
+
+    act(() => { result.current.undo(); });
+
+    await waitFor(() => {
+      expect(result.current.state.map.terrain['2,3']).toBeUndefined();
+    });
+  });
+
+  test('commitDrawing creates a history entry and undo reverts it', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    const testPath = { type: 'pencil', points: [{ x: 10, y: 10 }, { x: 20, y: 20 }], color: '#6366f1', size: 4 };
+
+    act(() => {
+      result.current.commitDrawing(testPath);
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.map.drawing).toHaveLength(1);
+      expect(result.current.state.map.drawing[0].color).toBe('#6366f1');
+    });
+
+    act(() => { result.current.undo(); });
+
+    await waitFor(() => {
+      expect(result.current.state.map.drawing).toHaveLength(0);
+    });
+  });
+
+  test('clearMapDrawing creates a history entry and undo restores drawings', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    const testPath = { type: 'pencil', points: [{ x: 1, y: 1 }], color: '#f00', size: 3 };
+
+    act(() => { result.current.commitDrawing(testPath); });
+    await waitFor(() => expect(result.current.state.map.drawing).toHaveLength(1));
+
+    act(() => { result.current.clearMapDrawing(); });
+    await waitFor(() => expect(result.current.state.map.drawing).toHaveLength(0));
+
+    act(() => { result.current.undo(); });
+    await waitFor(() => expect(result.current.state.map.drawing).toHaveLength(1));
+  });
+
+  test('placeObject creates a history entry and undo reverts it', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => {
+      result.current.placeObject('stone_pillar', 5, 5, 1, 0);
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.map.objects).toHaveLength(1);
+      expect(result.current.state.map.objects[0].assetId).toBe('stone_pillar');
+    });
+
+    act(() => { result.current.undo(); });
+
+    await waitFor(() => {
+      expect(result.current.state.map.objects).toHaveLength(0);
+    });
+  });
+
+  test('clearMap creates a history entry and undo restores map state', async () => {
+    const { result } = renderHook(() => useEncounterState());
+    await waitFor(() => expect(result.current.state.isHydrated).toBe(true));
+
+    act(() => { result.current.commitTerrain({ '0,0': 'water_deep' }); });
+    await waitFor(() => expect(result.current.state.map.terrain['0,0']).toBe('water_deep'));
+
+    act(() => { result.current.clearMap(); });
+    await waitFor(() => expect(result.current.state.map.terrain['0,0']).toBeUndefined());
+
+    act(() => { result.current.undo(); });
+    await waitFor(() => expect(result.current.state.map.terrain['0,0']).toBe('water_deep'));
+  });
 });

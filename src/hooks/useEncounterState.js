@@ -1,59 +1,72 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { get, set } from 'idb-keyval';
+import { combatEngine, generateId } from '../utils/combatEngine';
 
-// --- UTILS ---
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
+// --- CONSTANTS ---
+const SYNC_CHANNEL = "dm-hub-sync";
 
 const INITIAL_STATE = {
   round: 1,
   turnIndex: 0,
   entities: [],
   alerts: [],
-  logs: [], // Chronological audit trail
+  logs: [],
   history: [], 
   historyPointer: -1,
   lastUpdated: Date.now(),
   map: {
-    drawing: [], // Array of { type, points, color, size }
-    tokens: {},   // Map of entityId -> { x, y }
+    drawing: [],
+    tokens: {},
     view: { x: 0, y: 0, zoom: 1 },
-    terrain: {},  // Map of "x,y" -> assetId
-    objects: [],  // Array of { id, assetId, x, y, scale, rotation }
-    config: { 
-      gridVisible: true, 
+    terrain: {},
+    objects: [],
+    fog: {},
+    config: {
+      gridVisible: true,
       gridSize: 50,
-      width: 30, 
+      width: 30,
       height: 30,
       baseTile: 'grass_lush'
     }
   },
-  snapshots: [] // Array of { id, name, timestamp, state }
+  snapshots: []
 };
 
-const SYNC_CHANNEL = "dm-hub-sync";
+/**
+ * SYNC MACHINE STATES
+ */
+const SYNC_STATES = {
+  IDLE: 'saved',
+  SAVING: 'saving',
+  CONFLICT: 'conflict',
+  ERROR: 'error'
+};
 
 export const useEncounterState = () => {
   const [state, setState] = useState(() => ({ ...INITIAL_STATE, isHydrated: false }));
-  const [syncStatus, setSyncStatus] = useState('saved'); // 'saved', 'saving', 'conflict'
+  const [syncStatus, setSyncStatus] = useState(SYNC_STATES.IDLE);
+  
+  // Refs for stable state access in effects/callbacks
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
 
-  // Broadcast Channel for multi-tab sync
+  /**
+   * PERSISTENCE LAYER: Multi-tab Sync
+   */
   useEffect(() => {
     const channel = new BroadcastChannel(SYNC_CHANNEL);
     channel.onmessage = (event) => {
       const remoteState = event.data;
-      setState(prev => {
-        if (remoteState.lastUpdated > prev.lastUpdated) {
-          // Sync state while preserving local history/isHydrated
-          return { ...prev, ...remoteState, isHydrated: true };
-        }
-        return prev;
-      });
+      if (remoteState.lastUpdated > stateRef.current.lastUpdated) {
+        setState(prev => ({ ...prev, ...remoteState, isHydrated: true }));
+      }
     };
     return () => channel.close();
   }, []);
 
-  // Hydrate from IndexedDB on mount
+  /**
+   * PERSISTENCE LAYER: IndexedDB Hydration
+   */
   useEffect(() => {
     get('dm-hub-state').then(saved => {
       if (saved) {
@@ -64,52 +77,56 @@ export const useEncounterState = () => {
     });
   }, []);
 
-  // Persistence to IndexedDB with collision detection
+  /**
+   * PERSISTENCE LAYER: Auto-Save
+   */
   useEffect(() => {
     if (!state.isHydrated) return;
     
-    const saveState = async () => {
-      setSyncStatus('saving');
+    const saveToDisk = async () => {
+      setSyncStatus(SYNC_STATES.SAVING);
       try {
         const diskState = await get('dm-hub-state');
+        // Simple conflict detection based on timestamp
         if (diskState && diskState.lastUpdated > state.lastUpdated) {
-          setSyncStatus('conflict');
+          setSyncStatus(SYNC_STATES.CONFLICT);
           return;
         }
 
         const { history: _, historyPointer: __, isHydrated: ___, ...toSave } = state;
         await set('dm-hub-state', toSave);
         
-        // Broadcast to other tabs
         const channel = new BroadcastChannel(SYNC_CHANNEL);
         channel.postMessage({ ...toSave, isHydrated: true });
         channel.close();
         
-        setSyncStatus('saved');
+        setSyncStatus(SYNC_STATES.IDLE);
       } catch (err) {
-        console.error("Save failed:", err);
-        setSyncStatus('error');
+        setSyncStatus(SYNC_STATES.ERROR);
       }
     };
 
-    const timer = setTimeout(saveState, 500); // Debounce saves
-    return () => clearTimeout(timer);
-  }, [state]);
+    const debounce = setTimeout(saveToDisk, 500);
+    return () => clearTimeout(debounce);
+  }, [state.lastUpdated, state.isHydrated]);
 
-  // Core update function with history tracking and logging
-  const updateState = useCallback((updater, logMessage = null, subType = null, skipHistory = false) => {
+  /**
+   * CORE REDUCER: Handles State Transitions, Logging, and History
+   */
+  const updateState = useCallback((updater, logMessage = null, options = {}) => {
+    const { skipHistory = false, subType = null } = options;
+
     setState(prev => {
       const newState = typeof updater === 'function' ? updater(prev) : updater;
-      const now = Date.now();
       
+      // Structural equality check to avoid redundant renders
       const { history: _, historyPointer: __, isHydrated: ___, logs: ____, lastUpdated: _____, ...cleanNew } = newState;
       const { history: _h, historyPointer: _p, isHydrated: _hy, logs: _l, lastUpdated: _lu, ...cleanPrev } = prev;
-      
       if (JSON.stringify(cleanNew) === JSON.stringify(cleanPrev)) return prev;
 
-      // Add to logs if message provided
+      // Log Management
       let newLogs = prev.logs || [];
-      const messageText = logMessage ? (typeof logMessage === 'function' ? logMessage(prev, cleanNew) : logMessage) : null;
+      const messageText = typeof logMessage === 'function' ? logMessage(prev, newState) : logMessage;
       
       if (messageText) {
         newLogs = [{ 
@@ -118,89 +135,247 @@ export const useEncounterState = () => {
           timestamp: new Date().toLocaleTimeString(),
           round: prev.round,
           type: messageText.includes('damage') ? 'damage' : messageText.includes('heal') ? 'heal' : 'info',
-          subType: subType // For rich iconography
-        }, ...newLogs].slice(0, 100); // Keep last 100 logs
+          subType
+        }, ...newLogs].slice(0, 100);
       }
 
-      const stateWithMeta = { ...cleanNew, logs: newLogs, lastUpdated: now };
-      
+      const finalizedState = { ...newState, logs: newLogs, lastUpdated: Date.now(), isHydrated: true };
+
       if (skipHistory) {
-        return {
-          ...stateWithMeta,
-          history: prev.history,
-          historyPointer: prev.historyPointer,
-          isHydrated: true
-        };
+        return { ...finalizedState, history: prev.history, historyPointer: prev.historyPointer };
       }
 
+      const { history: _hist, historyPointer: _ptr, ...sanitizedSnapshot } = finalizedState;
       const newHistory = prev.history.slice(0, prev.historyPointer + 1);
-      newHistory.push({ ...stateWithMeta, note: messageText });
+      newHistory.push({ ...sanitizedSnapshot, note: messageText });
+      const cappedHistory = newHistory.slice(-50);
       
-      const startIdx = Math.max(0, newHistory.length - 50);
-      const cappedHistory = newHistory.slice(startIdx);
-      
-      return {
-        ...stateWithMeta,
-        history: cappedHistory,
-        historyPointer: cappedHistory.length - 1,
-        isHydrated: true
+      return { 
+        ...finalizedState, 
+        history: cappedHistory, 
+        historyPointer: cappedHistory.length - 1 
       };
     });
   }, []);
 
-  // --- ACTIONS ---
+  /**
+   * DOMAIN ACTIONS: Initiative & Turns
+   */
+  const advanceTurn = useCallback((direction = 1) => {
+    updateState(
+      prev => combatEngine.advanceTurn(prev, direction),
+      (prev, next) => {
+        const nextActive = next.entities[next.turnIndex];
+        return direction > 0 
+          ? `Turn advanced to ${nextActive?.name} (R${next.round})` 
+          : `Turn reverted to ${nextActive?.name}`;
+      }
+    );
+  }, [updateState]);
 
+  const setEntitiesOrder = useCallback((newOrder) => {
+    updateState(prev => {
+      const activeId = prev.entities[prev.turnIndex]?.id;
+      const newTurnIndex = newOrder.findIndex(e => e.id === activeId);
+      return { ...prev, entities: newOrder, turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex };
+    }, "Initiative order reorganized.");
+  }, [updateState]);
+
+  /**
+   * DOMAIN ACTIONS: Damage & Healing
+   */
+  const applyDamage = useCallback((id, amount, type, toGroup = false) => {
+    updateState(
+      prev => {
+        const target = prev.entities.find(e => e.id === id);
+        const targetIds = toGroup && target?.groupId 
+          ? prev.entities.filter(e => e.groupId === target.groupId).map(e => e.id)
+          : [id];
+
+        const newEntities = combatEngine.applyDamage(prev.entities, targetIds, amount, type);
+        let newAlerts = [...prev.alerts];
+        
+        // Concentration checks for all affected targets
+        prev.entities.forEach(e => {
+          if (targetIds.includes(e.id) && e.concentration && amount > 0) {
+            const dc = Math.max(10, Math.floor(amount / 2));
+            newAlerts.push({
+              id: generateId(),
+              entityId: e.id,
+              dc,
+              message: `${e.name} Concentration Check (DC ${dc})`,
+              type: 'concentration'
+            });
+          }
+        });
+        
+        return { ...prev, entities: newEntities, alerts: newAlerts.slice(-10) };
+      },
+      (prev) => {
+        const target = prev.entities.find(e => e.id === id);
+        return `${target?.name}${toGroup ? ' Group' : ''} took ${amount} ${type} damage.`;
+      },
+      { subType: type }
+    );
+  }, [updateState]);
+
+  const applyBulkDamage = useCallback((damageMap, type, logMessage) => {
+    updateState(
+      prev => {
+        let newEntities = [...prev.entities];
+        let newAlerts = [...prev.alerts];
+
+        Object.entries(damageMap).forEach(([id, amount]) => {
+          // B03 FIX: pass [id] (array) not id (string) to combatEngine.applyDamage
+          newEntities = combatEngine.applyDamage(newEntities, [id], amount, type);
+          
+          // Concentration check
+          const entity = prev.entities.find(e => e.id === id);
+          if (entity?.concentration && amount > 0) {
+            const dc = Math.max(10, Math.floor(amount / 2));
+            newAlerts.push({
+              id: generateId(),
+              entityId: id,
+              dc,
+              message: `${entity.name} Concentration Check (DC ${dc})`,
+              type: 'concentration'
+            });
+          }
+        });
+
+        return { ...prev, entities: newEntities, alerts: newAlerts.slice(-10) };
+      },
+      logMessage || "Area damage resolved.",
+      { subType: type }
+    );
+  }, [updateState]);
+
+  const applyHealing = useCallback((id, amount, toGroup = false) => {
+    updateState(
+      prev => {
+        const target = prev.entities.find(e => e.id === id);
+        const targetIds = toGroup && target?.groupId 
+          ? prev.entities.filter(e => e.groupId === target.groupId).map(e => e.id)
+          : [id];
+        return { ...prev, entities: combatEngine.applyHealing(prev.entities, targetIds, amount) };
+      },
+      (prev) => {
+        const target = prev.entities.find(e => e.id === id);
+        return `${target?.name}${toGroup ? ' Group' : ''} healed for ${amount} HP.`;
+      },
+      { subType: 'heal' }
+    );
+  }, [updateState]);
+
+  /**
+   * HISTORY ACTIONS
+   */
   const undo = useCallback(() => {
+    const note = stateRef.current.history[stateRef.current.historyPointer]?.note || "Action";
     setState(prev => {
       if (prev.historyPointer > 0) {
-        // The action being undone is the one that CREATED the current state we are in.
-        // So we look at the current pointer's note.
         const nextPointer = prev.historyPointer - 1;
-        return {
-          ...prev.history[nextPointer],
-          history: prev.history,
-          historyPointer: nextPointer,
-          isHydrated: true
-        };
+        return { ...prev.history[nextPointer], history: prev.history, historyPointer: nextPointer };
       }
       return prev;
     });
-    // This is still slightly risky due to async setState, but since note is 
-    // captured from 'prev' inside the closure, and we return it from the 
-    // outer function... wait.
-    // Actually, in standard React useState, the outer function cannot access 'prev' 
-    // synchronously. I'll change the approach: we'll return the note by peeking 
-    // at the state which should be stable for the current tick.
-    const currentAction = state.history[state.historyPointer];
-    return currentAction?.note || "Action";
-  }, [state.history, state.historyPointer]);
+    return note;
+  }, []);
 
   const redo = useCallback(() => {
-    if (state.historyPointer < state.history.length - 1) {
-      const redoneAction = state.history[state.historyPointer + 1];
-      const note = redoneAction?.note || "Action";
-      setState(prev => {
+    // B05 FIX: use functional setState to avoid stale closure on state.historyPointer
+    let note = "";
+    setState(prev => {
+      if (prev.historyPointer < prev.history.length - 1) {
         const nextPointer = prev.historyPointer + 1;
-        return {
-          ...prev.history[nextPointer],
-          history: prev.history,
-          historyPointer: nextPointer,
-          isHydrated: true
-        };
-      });
-      return note;
-    }
-    return "";
-  }, [state.history, state.historyPointer]);
+        note = prev.history[nextPointer]?.note || "Action";
+        return { ...prev.history[nextPointer], history: prev.history, historyPointer: nextPointer };
+      }
+      return prev;
+    });
+    return note;
+  }, []);
 
+  /**
+   * ENTITY LIFECYCLE
+   */
+  const addEntity = useCallback((isPlayer = false) => {
+    const name = isPlayer ? 'New Hero' : 'New Foe';
+    const newEntity = {
+      id: generateId(),
+      name,
+      isPlayer,
+      hp: 10, maxHp: 10, tempHp: 0,
+      ac: 10, initiative: 10,
+      conditions: [], effects: [], concentration: false,
+      pos: { x: 0, y: 0 }
+    };
+
+    updateState(prev => ({
+      ...prev,
+      entities: combatEngine.sortInitiative([...prev.entities, newEntity])
+    }), `Recruited ${name} to the field.`);
+  }, [updateState]);
+
+  const updateEntity = useCallback((id, updates) => {
+    updateState(
+      prev => ({ ...prev, entities: prev.entities.map(e => e.id === id ? { ...e, ...updates } : e) }),
+      (prev) => {
+        const entity = prev.entities.find(e => e.id === id);
+        return updates.name ? `Renamed ${entity?.name} to ${updates.name}` : `Modified ${entity?.name}`;
+      }
+    );
+  }, [updateState]);
+
+  const removeEntity = useCallback((id) => {
+    updateState(
+      prev => ({ ...prev, entities: prev.entities.filter(e => e.id !== id) }),
+      "Entity purged from timeline."
+    );
+  }, [updateState]);
+
+  const addEntityFromTemplate = useCallback((template) => {
+    const newEntity = {
+      ...template,
+      id: generateId(),
+      isPlayer: false,
+      initiative: 10,
+      conditions: [],
+      effects: [],
+      concentration: false,
+      legendaryActions: template.legendaryActionsMax || 0,
+      legendaryResistances: template.legendaryResistancesMax || 0,
+      pos: { x: 0, y: 0 }
+    };
+
+    updateState(prev => ({
+      ...prev,
+      entities: combatEngine.sortInitiative([...prev.entities, newEntity])
+    }), `Summoned ${template.name} from the aether.`);
+  }, [updateState]);
+
+  /**
+   * DOMAIN ACTIONS: Utility & Import/Export
+   */
   const importState = useCallback((imported) => {
-    if (!imported.entities) return;
-    updateState((prev) => ({
-      ...INITIAL_STATE,
-      ...imported,
-      map: { ...INITIAL_STATE.map, ...(imported.map || {}) },
-      snapshots: prev.snapshots // Preserve existing snapshots on import
-    }), "Encounter imported from file");
+    try {
+      if (!imported || !Array.isArray(imported.entities)) {
+        console.error("Invalid encounter schema: missing entities array.");
+        return false;
+      }
+      
+      updateState((prev) => ({
+        ...INITIAL_STATE,
+        ...imported,
+        map: { ...INITIAL_STATE.map, ...(imported.map || {}) },
+        snapshots: prev.snapshots,
+        isHydrated: true
+      }), "Encounter restored from external source.");
+      return true;
+    } catch (err) {
+      console.error("Failed to parse encounter data:", err);
+      return false;
+    }
   }, [updateState]);
 
   const exportState = useCallback(() => {
@@ -214,596 +389,286 @@ export const useEncounterState = () => {
     URL.revokeObjectURL(url);
   }, [state]);
 
-  const addEntity = useCallback((isPlayer = false) => {
-    const name = isPlayer ? 'New Hero' : 'New Creature';
-    const newEntity = {
-      id: generateId(),
-      name,
-      isPlayer,
-      hp: 10,
-      maxHp: 10,
-      tempHp: 0,
-      ac: 10,
-      dc: 10,
-      initiative: 10,
-      conditions: [],
-      effects: [],
-      concentration: false,
-      groupId: '',
-      narrativeNotes: '',
-      resistances: [],
-      immunities: [],
-      vulnerabilities: [],
-      hidden: false,
-      legendaryActions: 0,
-      legendaryActionsMax: 0,
-      legendaryResistances: 0,
-      legendaryResistancesMax: 0,
-    };
-
-    updateState(prev => {
-      const activeId = prev.entities[prev.turnIndex]?.id;
-      const newEntities = [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative);
-      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
-      return {
-        ...prev,
-        entities: newEntities,
-        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
-      };
-    }, `Added ${name} to the initiative.`);
-  }, [updateState]);
-
-  const addEntityFromTemplate = useCallback((template) => {
-    const newEntity = {
-      id: generateId(),
-      name: template.name,
-      isPlayer: false,
-      hp: template.hp,
-      maxHp: template.maxHp,
-      tempHp: 0,
-      ac: template.ac,
-      dc: template.dc || 10,
-      initiative: 10,
-      conditions: [],
-      effects: [],
-      concentration: false,
-      groupId: '',
-      narrativeNotes: '',
-      resistances: template.resistances || [],
-      immunities: template.immunities || [],
-      vulnerabilities: template.vulnerabilities || [],
-      hidden: false,
-      legendaryActions: template.legendaryActionsMax || 0,
-      legendaryActionsMax: template.legendaryActionsMax || 0,
-      legendaryResistances: template.legendaryResistancesMax || 0,
-      legendaryResistancesMax: template.legendaryResistancesMax || 0,
-      // Metadata for rich display
-      size: template.size,
-      type: template.type,
-      alignment: template.alignment,
-      stats: template.stats,
-      saves: template.saves,
-      skills: template.skills,
-      senses: template.senses,
-      languages: template.languages,
-      cr: template.cr,
-      traits: template.traits,
-      actions: template.actions,
-      legendaryActionsList: template.legendaryActions
-    };
-
-    updateState(prev => {
-      const activeId = prev.entities[prev.turnIndex]?.id;
-      const newEntities = [...prev.entities, newEntity].sort((a, b) => b.initiative - a.initiative);
-      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
-      return {
-        ...prev,
-        entities: newEntities,
-        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
-      };
-    }, `Added ${template.name} from bestiary.`);
-  }, [updateState]);
-
+  /**
+   * ENTITY ACTIONS: Special Resources
+   */
   const duplicateEntity = useCallback((id) => {
     updateState(prev => {
       const entity = prev.entities.find(e => e.id === id);
       if (!entity) return prev;
       
-      // Handle name numbering robustly
       const baseName = entity.name.replace(/\s\d+$/, '').trim();
       const sameBase = prev.entities.filter(e => e.name.startsWith(baseName));
-      
-      let maxNum = 0;
-      sameBase.forEach(e => {
+      const maxNum = sameBase.reduce((max, e) => {
         const match = e.name.match(/\s(\d+)$/);
-        if (match) {
-          const n = parseInt(match[1]);
-          if (n > maxNum) maxNum = n;
-        }
-      });
+        return match ? Math.max(max, parseInt(match[1])) : max;
+      }, 0);
       
-      const newName = `${baseName} ${maxNum + 1}`;
-
-      const cloned = {
-        ...entity,
-        id: generateId(),
-        name: newName,
-        hp: entity.maxHp,
-        tempHp: 0,
-        conditions: [],
-        effects: [],
-        concentration: false
+      const cloned = { 
+        ...entity, 
+        id: generateId(), 
+        name: `${baseName} ${maxNum + 1}`, 
+        hp: entity.maxHp, 
+        tempHp: 0, 
+        conditions: [], 
+        effects: [], 
+        concentration: false,
+        pos: entity.pos ? { x: entity.pos.x + 1, y: entity.pos.y + 1 } : { x: 0, y: 0 }
       };
-
-      const activeId = prev.entities[prev.turnIndex]?.id;
-      const newEntities = [...prev.entities, cloned].sort((a, b) => b.initiative - a.initiative);
-      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
-
-      return {
-        ...prev,
-        entities: newEntities,
-        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
-      };
-    }, (prev) => {
-      const entity = prev.entities.find(e => e.id === id);
-      return `Duplicated ${entity?.name}.`;
-    });
-  }, [updateState]);
-
-  const updateEntity = useCallback((id, updates) => {
-    updateState(prev => ({
-      ...prev,
-      entities: prev.entities.map(e => e.id === id ? { ...e, ...updates } : e)
-    }), (prev) => {
-      const entity = prev.entities.find(e => e.id === id);
-      if (updates.name) return `Renamed ${entity?.name} to ${updates.name}.`;
-      return `Updated ${entity?.name}.`;
-    });
+      return { ...prev, entities: combatEngine.sortInitiative([...prev.entities, cloned]) };
+    }, (prev) => `Duplicated ${prev.entities.find(e => e.id === id)?.name}.`);
   }, [updateState]);
 
   const spendLegendaryAction = useCallback((id) => {
-    updateState(prev => {
-      const entity = prev.entities.find(e => e.id === id);
-      if (!entity || entity.legendaryActions <= 0) return prev;
-      return {
-        ...prev,
-        entities: prev.entities.map(e => e.id === id ? { ...e, legendaryActions: e.legendaryActions - 1 } : e)
-      };
-    }, (prev) => {
-      const entity = prev.entities.find(e => e.id === id);
-      return `${entity?.name} spent a Legendary Action.`;
-    }, 'legendary');
+    updateState(prev => ({
+      ...prev,
+      entities: prev.entities.map(e => e.id === id ? { ...e, legendaryActions: Math.max(0, e.legendaryActions - 1) } : e)
+    }), (prev) => `${prev.entities.find(e => e.id === id)?.name} spent a Legendary Action.`, { subType: 'legendary' });
   }, [updateState]);
 
   const spendLegendaryResistance = useCallback((id) => {
-    updateState(prev => {
-      const entity = prev.entities.find(e => e.id === id);
-      if (!entity || entity.legendaryResistances <= 0) return prev;
-      return {
-        ...prev,
-        entities: prev.entities.map(e => e.id === id ? { ...e, legendaryResistances: e.legendaryResistances - 1 } : e)
-      };
-    }, (prev) => {
-      const entity = prev.entities.find(e => e.id === id);
-      return `${entity?.name} spent a Legendary Resistance!`;
-    }, 'resistance');
-  }, [updateState]);
-
-  const removeEntity = useCallback((id) => {
-    updateState(prev => {
-      const activeId = prev.entities[prev.turnIndex]?.id;
-      const newEntities = prev.entities.filter(e => e.id !== id);
-      const newTurnIndex = newEntities.findIndex(e => e.id === activeId);
-      const newTokens = { ...prev.map.tokens };
-      delete newTokens[id];
-      return {
-        ...prev,
-        entities: newEntities,
-        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex,
-        map: { ...prev.map, tokens: newTokens }
-      };
-    }, `Removed from combat.`);
-  }, [updateState]);
-
-  const addAlert = useCallback((message, type = 'info') => {
     updateState(prev => ({
       ...prev,
-      alerts: [{ id: generateId(), message, type }, ...prev.alerts].slice(0, 5)
-    }));
+      entities: prev.entities.map(e => e.id === id ? { ...e, legendaryResistances: Math.max(0, e.legendaryResistances - 1) } : e)
+    }), (prev) => `${prev.entities.find(e => e.id === id)?.name} spent a Legendary Resistance!`, { subType: 'resistance' });
   }, [updateState]);
 
-  const clearAlert = useCallback((id) => {
-    updateState(prev => ({
-      ...prev,
-      alerts: prev.alerts.filter(a => a.id !== id)
-    }));
-  }, [updateState]);
-
-  const applyHealing = useCallback((id, amount, toGroup = false) => {
-    updateState(prev => {
-      const target = prev.entities.find(e => e.id === id);
-      const targets = toGroup && target?.groupId 
-        ? prev.entities.filter(e => e.groupId === target.groupId)
-        : [target];
-
-      return {
-        ...prev,
-        entities: prev.entities.map(e => 
-          targets.some(t => t.id === e.id) ? { ...e, hp: Math.min(e.maxHp, e.hp + amount) } : e
-        )
-      };
-    }, (prev) => {
-      const target = prev.entities.find(e => e.id === id);
-      return `${target?.name} ${toGroup ? 'Group' : ''} healed for ${amount} HP.`;
-    }, 'heal');
-  }, [updateState]);
-
-  const applyDamage = useCallback((id, amount, type, toGroup = false) => {
-    updateState(prev => {
-      const target = prev.entities.find(e => e.id === id);
-      const targets = toGroup && target?.groupId 
-        ? prev.entities.filter(e => e.groupId === target.groupId)
-        : [target];
-
-      let newAlerts = [...prev.alerts];
-      const newEntities = prev.entities.map(e => {
-        if (targets.some(t => t?.id === e.id)) {
-          let actualDamage = amount;
-          if (e.immunities.includes(type)) actualDamage = 0;
-          else if (e.vulnerabilities.includes(type)) actualDamage *= 2;
-          else if (e.resistances.includes(type)) actualDamage = Math.floor(actualDamage / 2);
-
-          let remainingDamage = actualDamage;
-          let newTempHp = e.tempHp;
-          if (newTempHp > 0) {
-            const absorbed = Math.min(newTempHp, remainingDamage);
-            newTempHp -= absorbed;
-            remainingDamage -= absorbed;
-          }
-
-          const newHp = Math.max(0, e.hp - remainingDamage);
-
-          if (actualDamage > 0 && e.concentration) {
-            const dc = Math.max(10, Math.floor(actualDamage / 2));
-            newAlerts.push({
-              id: generateId(),
-              entityId: e.id,
-              dc: dc,
-              message: `${e.name} must make a DC ${dc} Concentration save!`,
-              type: 'concentration'
-            });
-          }
-
-          return { ...e, hp: newHp, tempHp: newTempHp };
-        }
-        return e;
-      });
-
-      return {
-        ...prev,
-        entities: newEntities,
-        alerts: newAlerts.slice(0, 10) // Allow more alerts now that we filter them
-      };
-    }, (prev) => {
-      const target = prev.entities.find(e => e.id === id);
-      return `${target?.name} ${toGroup ? 'Group' : ''} took ${amount} ${type} damage.`;
-    }, type);
-  }, [updateState]);
-
-  const applyGroupDamage = useCallback((damageMap, damageType, label) => {
-    updateState(prev => {
-      let newAlerts = [...prev.alerts];
-      const newEntities = prev.entities.map(e => {
-        const damageAmount = damageMap[e.id];
-        if (damageAmount !== undefined && damageAmount > 0) {
-          let newHp = e.hp;
-          let newTempHp = e.tempHp;
-
-          if (newTempHp > 0) {
-            const absorbed = Math.min(newTempHp, damageAmount);
-            newTempHp -= absorbed;
-            const remaining = damageAmount - absorbed;
-            newHp = Math.max(0, newHp - remaining);
-          } else {
-            newHp = Math.max(0, newHp - damageAmount);
-          }
-
-          // Concentration check
-          if (e.concentration && newHp > 0) {
-            const dc = Math.max(10, Math.floor(damageAmount / 2));
-            newAlerts.push({
-              id: generateId(),
-              entityId: e.id,
-              dc: dc,
-              message: `${e.name} must make a DC ${dc} Concentration save!`,
-              type: 'concentration'
-            });
-          }
-
-          return { ...e, hp: newHp, tempHp: newTempHp };
-        }
-        return e;
-      });
-
-      return {
-        ...prev,
-        entities: newEntities,
-        alerts: newAlerts.slice(0, 10),
-        logs: (prev.logs || []).slice(0, 100)
-      };
-    }, label || `Group damage applied.`);
-  }, [updateState]);
-
-  const resolveConcentration = useCallback((alertId, success) => {
-    setState(prev => {
-      const alert = prev.alerts.find(a => a.id === alertId);
-      if (!alert) return prev;
-
-      let newEntities = prev.entities;
-      if (!success) {
-        newEntities = prev.entities.map(e => 
-          e.id === alert.entityId ? { ...e, concentration: false } : e
-        );
-      }
-
-      const newState = {
-        ...prev,
-        entities: newEntities,
-        alerts: prev.alerts.filter(a => a.id !== alertId),
-        lastUpdated: Date.now()
-      };
-
-      // Add to logs
-      const entity = prev.entities.find(e => e.id === alert.entityId);
-      const note = success ? `${entity?.name} maintained concentration.` : `${entity?.name} lost concentration!`;
-      
-      const logEntry = {
-        id: generateId(),
-        message: note,
-        timestamp: new Date().toLocaleTimeString(),
-        type: 'info',
-        subType: 'concentration'
-      };
-
-      // We manually update history here since we aren't using updateState
-      const newLogs = [logEntry, ...(prev.logs || [])].slice(0, 100);
-      
-      const finalState = { ...newState, logs: newLogs };
-      const newHistory = prev.history.slice(0, prev.historyPointer + 1);
-      newHistory.push({ ...finalState, note: note });
-
-      return {
-        ...finalState,
-        history: newHistory,
-        historyPointer: newHistory.length - 1,
-        isHydrated: true
-      };
-    });
-  }, []);
-
-  const advanceTurn = useCallback((direction = 1) => {
-    updateState(prev => {
-      if (prev.entities.length === 0) return prev;
-
-      let newIndex = prev.turnIndex + direction;
-      let newRound = prev.round;
-
-      if (newIndex >= prev.entities.length) {
-        newIndex = 0;
-        newRound += 1;
-      } else if (newIndex < 0) {
-        newIndex = prev.entities.length - 1;
-        newRound = Math.max(1, newRound - 1);
-      }
-
-      const prevActive = prev.entities[prev.turnIndex];
-      const nextActive = prev.entities[newIndex];
-      let newAlerts = [...prev.alerts];
-
-      const updatedEntities = prev.entities.map(e => {
-        let effects = [...e.effects];
-        if (e.id === prevActive?.id && direction === 1) {
-          effects = effects.map(ef => ef.tickOn === 'end' ? { ...ef, duration: ef.duration - 1 } : ef);
-        }
-        if (e.id === nextActive?.id && direction === 1) {
-          effects = effects.map(ef => ef.tickOn === 'start' ? { ...ef, duration: ef.duration - 1 } : ef);
-          
-          if (!e.isPlayer && e.legendaryActionsMax > 0) {
-            return { ...e, effects: effects.filter(ef => ef.duration > 0), legendaryActions: e.legendaryActionsMax };
-          }
-        }
-        return { ...e, effects: effects.filter(ef => ef.duration > 0) };
-      });
-
-      if (prevActive?.initiative >= 20 && nextActive?.initiative < 20 && direction === 1) {
-        newAlerts.push({ id: generateId(), message: "Initiative Count 20: Lair Actions!", type: 'info' });
-      }
-
-      if (prevActive?.isPlayer && direction === 1) {
-        const monstersWithLegendary = updatedEntities.filter(e => !e.isPlayer && e.legendaryActions > 0 && e.hp > 0);
-        if (monstersWithLegendary.length > 0) {
-          newAlerts.push({ id: generateId(), message: "Player Turn Ended: Monsters may have Legendary Actions.", type: 'warning' });
-        }
-      }
-
-      return {
-        ...prev,
-        round: newRound,
-        turnIndex: newIndex,
-        entities: updatedEntities,
-        alerts: newAlerts.slice(0, 5)
-      };
-    }, (prev, next) => {
-      const nextActive = next.entities[next.turnIndex];
-      return direction > 0 
-        ? `Advanced to ${nextActive?.name}'s turn (Round ${next.round}).` 
-        : `Went back to ${nextActive?.name}'s turn.`;
-    });
-  }, [updateState]);
-
-  const setEntitiesOrder = useCallback((newOrder) => {
-    updateState(prev => {
-      const activeId = prev.entities[prev.turnIndex]?.id;
-      const newTurnIndex = newOrder.findIndex(e => e.id === activeId);
-
-      return {
-        ...prev,
-        entities: newOrder,
-        turnIndex: newTurnIndex === -1 ? 0 : newTurnIndex
-      };
-    }, "Initiative order adjusted.");
-  }, [updateState]);
-
-  const updateMap = useCallback((mapUpdates) => {
-    updateState(prev => ({
-      ...prev,
-      map: { ...prev.map, ...mapUpdates }
-    }));
+  /**
+   * MAP ACTIONS: View only (no history — pan/zoom are not meaningfully undoable)
+   */
+  const updateMap = useCallback((updates) => {
+    updateState(prev => ({ ...prev, map: { ...prev.map, ...updates } }), null, { skipHistory: true });
   }, [updateState]);
 
   const updateToken = useCallback((entityId, pos, isFinal = true) => {
     updateState(prev => ({
       ...prev,
-      map: {
-        ...prev.map,
-        tokens: { ...prev.map.tokens, [entityId]: pos }
-      }
-    }), isFinal ? `Moved token.` : null, null, !isFinal);
+      map: { ...prev.map, tokens: { ...prev.map.tokens, [entityId]: pos } }
+    }), isFinal ? `Moved token.` : null, { skipHistory: !isFinal });
   }, [updateState]);
 
+  /**
+   * MAP ACTIONS: Terrain & Objects (with history — undoable)
+   */
+  const commitTerrain = useCallback((terrainUpdates) => {
+    const count = Object.keys(terrainUpdates).length;
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, terrain: { ...prev.map.terrain, ...terrainUpdates } } }),
+      `Terrain painted (${count} tile${count !== 1 ? 's' : ''}).`
+    );
+  }, [updateState]);
+
+  const placeObject = useCallback((assetId, x, y, scale = 1, rotation = 0) => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, objects: [...prev.map.objects, { id: generateId(), assetId, x, y, scale, rotation }] } }),
+      `Object placed on battlefield.`
+    );
+  }, [updateState]);
+
+  const removeObject = useCallback((objectId) => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, objects: prev.map.objects.filter(obj => obj.id !== objectId) } }),
+      "Object removed from battlefield."
+    );
+  }, [updateState]);
+
+  const applyTemplate = useCallback((template) => {
+    updateState(
+      prev => ({
+        ...prev,
+        map: {
+          ...prev.map,
+          terrain: {},
+          objects: template.decorations.map(d => ({ ...d, id: generateId() })),
+          config: { ...prev.map.config, width: template.dimensions.width, height: template.dimensions.height, baseTile: template.baseTile }
+        }
+      }),
+      `Applied map template: ${template.name}.`
+    );
+  }, [updateState]);
+
+  const clearMap = useCallback(() => {
+    updateState(
+      prev => ({ ...prev, map: { ...INITIAL_STATE.map } }),
+      "Battlefield sanitized."
+    );
+  }, [updateState]);
+
+  /**
+   * MAP ACTIONS: Drawing (with history)
+   */
+  const commitDrawing = useCallback((path) => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, drawing: [...(prev.map.drawing || []), path] } }),
+      "Tactical sketch added."
+    );
+  }, [updateState]);
+
+  const clearMapDrawing = useCallback(() => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, drawing: [] } }),
+      "Tactical sketches cleared."
+    );
+  }, [updateState]);
+
+  /**
+   * MAP ACTIONS: Fog of War (with history)
+   */
+  const setFogCell = useCallback((x, y, hidden) => {
+    updateState(
+      prev => {
+        const key = `${x},${y}`;
+        const newFog = { ...prev.map.fog };
+        if (hidden) {
+          newFog[key] = true;
+        } else {
+          delete newFog[key];
+        }
+        return { ...prev, map: { ...prev.map, fog: newFog } };
+      },
+      hidden ? `Fog applied at (${x},${y}).` : `Fog lifted at (${x},${y}).`
+    );
+  }, [updateState]);
+
+  const clearFog = useCallback(() => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, fog: {} } }),
+      "Fog of war lifted."
+    );
+  }, [updateState]);
+
+  /**
+   * SNAPSHOTS
+   */
   const saveSnapshot = useCallback((name) => {
     updateState(prev => {
-      const { history: _, ...cleanState } = prev;
-      const newSnapshot = {
-        id: generateId(),
-        name: name || `Snapshot ${prev.snapshots.length + 1}`,
-        timestamp: new Date().toLocaleString(),
-        state: cleanState
-      };
-      return {
-        ...prev,
-        snapshots: [newSnapshot, ...prev.snapshots].slice(0, 10)
-      };
-    }, "Tactical snapshot created.");
+      const { history: _, ...clean } = prev;
+      const snap = { id: generateId(), name: name || `Echo ${prev.snapshots.length + 1}`, timestamp: new Date().toLocaleString(), state: clean };
+      return { ...prev, snapshots: [snap, ...prev.snapshots].slice(0, 10) };
+    }, "Temporal snapshot archived.");
   }, [updateState]);
 
   const loadSnapshot = useCallback((id) => {
     updateState(prev => {
-      const snapshot = prev.snapshots.find(s => s.id === id);
-      if (!snapshot) return prev;
-      return {
-        ...prev,
-        ...snapshot.state,
-        snapshots: prev.snapshots // Keep snapshots
-      };
-    }, "Reverted to tactical snapshot.");
+      const snap = prev.snapshots.find(s => s.id === id);
+      return snap ? { ...prev, ...snap.state, snapshots: prev.snapshots } : prev;
+    }, "Restored from temporal snapshot.");
   }, [updateState]);
 
   const deleteSnapshot = useCallback((id) => {
-    updateState(prev => ({
-      ...prev,
-      snapshots: prev.snapshots.filter(s => s.id !== id)
-    }), "Snapshot deleted.");
+    updateState(prev => ({ ...prev, snapshots: prev.snapshots.filter(s => s.id !== id) }), "Snapshot deleted.");
   }, [updateState]);
 
-  const placeTile = useCallback((x, y, assetId) => {
-    updateMap(map => ({
-      ...map,
-      terrain: { ...map.terrain, [`${x},${y}`]: assetId }
-    }));
-  }, [updateMap]);
+  // B17 FIX: removed duplicate clearAlert here — the canonical version is inline in the return object below (skipHistory: true)
 
-  const placeObject = useCallback((assetId, x, y, scale = 1, rotation = 0) => {
-    updateMap(map => ({
-      ...map,
-      objects: [...map.objects, { id: generateId(), assetId, x, y, scale, rotation }]
-    }));
-  }, [updateMap]);
+  const triggerLairAction = useCallback(() => {
+    // B02 FIX: push a visible alert so the DM knows to describe lair action effects
+    updateState(prev => ({
+      ...prev,
+      alerts: [
+        ...prev.alerts,
+        {
+          id: generateId(),
+          message: "Lair Action: Count 20 — Describe environmental effect!",
+          type: 'warning'
+        }
+      ].slice(-10)
+    }), "Lair Action triggered: Environmental hazard activated.");
+  }, [updateState]);
 
-  const removeObject = useCallback((objectId) => {
-    updateMap(map => ({
-      ...map,
-      objects: map.objects.filter(obj => obj.id !== objectId)
-    }));
-  }, [updateMap]);
+  const resetMap = useCallback(() => {
+    updateState(prev => ({ ...prev, map: INITIAL_STATE.map }), "Battlefield reset.");
+  }, [updateState]);
 
-  const applyTemplate = useCallback((template) => {
-    updateMap(map => ({
-      ...map,
-      terrain: {}, // Reset terrain
-      objects: template.decorations.map(d => ({ ...d, id: generateId() })),
-      config: { 
-        ...map.config, 
-        width: template.dimensions.width, 
-        height: template.dimensions.height,
-        baseTile: template.baseTile
-      }
-    }));
-  }, [updateMap]);
+  const clearEncounter = useCallback(() => {
+    // B13 FIX: preserve snapshots across encounter wipe
+    updateState(prev => ({ ...INITIAL_STATE, snapshots: prev.snapshots, isHydrated: true }), "Encounter wiped.");
+  }, [updateState]);
 
-  const clearMap = useCallback(() => {
-    updateMap(map => ({
-      ...map,
-      terrain: {},
-      objects: [],
-      drawing: [],
-      tokens: {}
+  const loadEncounter = useCallback((encounterData) => {
+    const entitiesWithIds = encounterData.entities.map(e => ({
+      ...e,
+      id: generateId(),
+      conditions: e.conditions || [],
+      effects: e.effects || [],
+      concentration: e.concentration || false,
+      tempHp: e.tempHp || 0,
+      legendaryActions: e.legendaryActionsMax || 0,
+      legendaryResistances: e.legendaryResistancesMax || 0
     }));
-  }, [updateMap]);
+    updateState(prev => ({
+      ...prev,
+      entities: combatEngine.sortInitiative(entitiesWithIds),
+      turnIndex: 0,
+      round: 1
+    }), `Loaded encounter: ${encounterData.name || 'Battle Ready'}`);
+  }, [updateState]);
+
+  // B08 FIX: expose clearLogs so RulesPanel doesn't need raw updateState
+  const clearLogs = useCallback(() => {
+    updateState(prev => ({ ...prev, logs: [] }), "Audit log purged.", { skipHistory: true });
+  }, [updateState]);
 
   return {
     state,
+    syncStatus,
     addEntity,
     updateEntity,
     removeEntity,
+    addEntityFromTemplate,
+    duplicateEntity,
     advanceTurn,
     applyDamage,
-    applyGroupDamage,
+    applyBulkDamage,
     applyHealing,
-    addAlert,
-    clearAlert,
     setEntitiesOrder,
-    importState,
-    undo,
-    redo,
-    syncStatus,
-    resolveConcentration,
     spendLegendaryAction,
     spendLegendaryResistance,
-    duplicateEntity,
     updateMap,
     updateToken,
-    saveSnapshot,
-    loadSnapshot,
-    deleteSnapshot,
-    exportState,
-    addEntityFromTemplate,
-    placeTile,
+    commitTerrain,
     placeObject,
     removeObject,
     applyTemplate,
     clearMap,
-    loadEncounter: (encounterData) => {
-      const entitiesWithIds = encounterData.entities.map(e => ({
-        ...e,
-        id: generateId(),
-        conditions: e.conditions || [],
-        effects: e.effects || [],
-        concentration: e.concentration || false,
-        tempHp: e.tempHp || 0,
-        legendaryActions: e.legendaryActionsMax || 0,
-        legendaryResistances: e.legendaryResistancesMax || 0
-      }));
-      updateState(prev => ({
-        ...prev,
-        entities: entitiesWithIds.sort((a, b) => b.initiative - a.initiative),
-        turnIndex: 0,
-        round: 1,
-        alerts: [],
-        logs: []
-      }), `Loaded demo encounter: ${encounterData.name}`);
-    },
+    commitDrawing,
+    clearMapDrawing,
+    setFogCell,
+    clearFog,
+    saveSnapshot,
+    loadSnapshot,
+    deleteSnapshot,
+    importState,
+    exportState,
+    loadEncounter,
+    resetMap,
+    clearEncounter,
+    triggerLairAction,
+    clearLogs,
+    undo,
+    redo,
     canUndo: state.historyPointer > 0,
-    canRedo: !!state.history && state.historyPointer < state.history.length - 1,
+    canRedo: state.historyPointer < state.history.length - 1,
+    clearAlert: (id) => updateState(prev => ({ ...prev, alerts: prev.alerts.filter(a => a.id !== id) }), null, { skipHistory: true }),
+    resolveConcentration: (alertId, success) => {
+      updateState(
+        prev => {
+          const alert = prev.alerts.find(a => a.id === alertId);
+          if (!alert) return prev;
+          const entityId = alert.entityId;
+          
+          return { 
+            ...prev, 
+            entities: prev.entities.map(e => e.id === entityId && !success ? { ...e, concentration: false } : e),
+            alerts: prev.alerts.filter(a => a.id !== alertId)
+          };
+        },
+        (prev) => {
+          const alert = prev.alerts.find(a => a.id === alertId);
+          const entity = prev.entities.find(e => e.id === alert?.entityId);
+          return success ? `${entity?.name} held focus.` : `${entity?.name} broke focus!`;
+        }
+      );
+    }
   };
 };
