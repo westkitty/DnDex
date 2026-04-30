@@ -1,5 +1,6 @@
 import React from 'react';
 import { Camera, BookOpen, Skull, Archive, Upload, FileDown } from 'lucide-react';
+import { useToast } from './toastContext';
 
 const BattlemasterContextDock = ({
   toggleBestiary,
@@ -8,6 +9,8 @@ const BattlemasterContextDock = ({
   exportState,
   importState
 }) => {
+  const { showToast } = useToast();
+
   return (
     <div className="h-full p-3 overflow-y-auto scrollbar-custom">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -40,9 +43,15 @@ const BattlemasterContextDock = ({
               const reader = new FileReader();
               reader.onload = (event) => {
                 try {
-                  importState(JSON.parse(String(event.target?.result || '{}')));
+                  const parsed = JSON.parse(String(event.target?.result || '{}'));
+                  const ok = importState(parsed);
+                  if (ok) {
+                    showToast('Session restored successfully.', 'info');
+                  } else {
+                    showToast('Invalid encounter schema — check file format.', 'warning', 6000);
+                  }
                 } catch {
-                  // no-op: import validation handled by encounter action
+                  showToast('Failed to parse file — not valid JSON.', 'error', 6000);
                 }
               };
               reader.readAsText(file);

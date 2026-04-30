@@ -1465,3 +1465,45 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` Repository now contains committed smoke script path; it is no longer `/tmp`-only.
 - `State After Completion:` Phase 2 functional goals completed and validated.
 - `Next Step / Handoff:` Start Phase 3 to align `BattlemasterContextDock` upload/import toast and error UX with `TopBar` import flow.
+
+### Entry 49 - Phase 3 BattlemasterContextDock Import UX Parity (2026-04-30)
+- `Summary:` Aligned `BattlemasterContextDock` Upload Session feedback with `TopBar` import UX using the existing toast system.
+- `Reason / Intent:` Ensure bottom dock import flow provides explicit success/JSON-parse/schema-failure feedback and no silent failures.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterContextDock.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/toastContext.js`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterContextDock.jsx`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+grep -n "importState\|Upload Session\|FileReader\|JSON.parse\|toast\|useToast" src/components/TopBar.jsx
+sed -n '1,340p' src/components/TopBar.jsx
+sed -n '1,340p' src/components/BattlemasterContextDock.jsx
+sed -n '1,220p' src/components/toastContext.js
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Mirror proven TopBar import messaging behavior in Battlemaster dock and validate no regression.
+- `Outputs Generated:`
+  - `Fact:` Bottom dock import now calls `showToast('Session restored successfully.', 'info')` when `importState` returns truthy.
+  - `Fact:` Bottom dock import now calls `showToast('Invalid encounter schema — check file format.', 'warning', 6000)` on invalid state/schema.
+  - `Fact:` Bottom dock import now calls `showToast('Failed to parse file — not valid JSON.', 'error', 6000)` on JSON parse failure.
+  - `Fact:` `importState` encounter action semantics were not changed.
+  - `Fact:` Validation results:
+    - `npm run build`: PASS
+    - `npx vitest run`: PASS (`16/16`)
+    - `npm run lint`: PASS with warnings only (`0 errors, 2 warnings`)
+    - `node scripts/smoke/battlemaster-dockable.mjs`: PASS (`Smoke pass: 20 checks`)
+- `Decisions:`
+  - `Fact:` Reused existing `useToast` hook rather than introducing a new shared import helper to keep patch minimal.
+- `Bugs / Blockers:`
+  - `Fact:` No blocker in this phase.
+- `Correction:`
+  - `Fact:` Prior dock import behavior silently swallowed parse errors; corrected.
+- `State After Completion:` TopBar and bottom dock import flows now provide equivalent user feedback on success/failure states.
+- `Next Step / Handoff:` Implement Phase 4 keyboard/preset panel recovery controls respecting `layoutLocked`.
