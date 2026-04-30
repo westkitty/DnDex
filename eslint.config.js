@@ -23,7 +23,10 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // varsIgnorePattern: ^[A-Z_] = allow unused uppercase/underscore-prefixed vars.
+      // |^motion$ = framer-motion false positive: ESLint core doesn't track JSXMemberExpression
+      // (<motion.div>) as a reference without eslint-plugin-react/jsx-uses-vars.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]|^motion$' }],
     },
   },
 ])

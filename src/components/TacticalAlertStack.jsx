@@ -104,13 +104,13 @@ const TacticalAlertStack = ({ alerts, clearAlert, resolveConcentration }) => {
                     {alert.type === 'concentration' && (
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => resolveConcentration(alert.entityId, true)}
+                          onClick={() => resolveConcentration(alert.id, true)}
                           className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[9px] font-black uppercase rounded-lg transition-all"
                         >
                           Pass Save
                         </button>
                         <button 
-                          onClick={() => resolveConcentration(alert.entityId, false)}
+                          onClick={() => resolveConcentration(alert.id, false)}
                           className="flex-1 py-1.5 glass-dark hover:bg-rose-500/20 text-rose-400 text-[9px] font-black uppercase rounded-lg border border-rose-500/30 transition-all"
                         >
                           Fail Save

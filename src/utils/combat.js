@@ -30,7 +30,7 @@ export const CONDITION_METADATA = {
   'Exhaustion': { icon: 'Timer', color: 'text-orange-500', bg: 'bg-orange-500/10' }
 };
 
-export const calculateFinalDamage = ({ amount, type, multiplier = 1, save = 'none' }) => {
+export const calculateFinalDamage = ({ amount, multiplier = 1, save = 'none' }) => {
   let final = amount;
   
   // Apply save

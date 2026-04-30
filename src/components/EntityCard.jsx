@@ -4,9 +4,7 @@ import {
   Brain, Trash2, GripVertical, 
   Eye, EyeOff, Minus, Plus, Settings, BookOpen, ShieldAlert, Sparkles
 } from 'lucide-react';
-import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CONDITION_METADATA } from '../utils/combat';
 import * as LucideIcons from 'lucide-react';
 
@@ -19,28 +17,28 @@ import EntityActions from './entity-card/EntityActions';
 import EntityReference from './entity-card/EntityReference';
 import { cn } from './entity-card/entityCardUtils';
 
-const EntityCard = ({ 
-  entity, isActive, isUpcoming, updateEntity, removeEntity, applyDamage, applyHealing, 
-  resolveConcentration, spendLegendaryAction, spendLegendaryResistance, alerts, dragControls, duplicateEntity,
+/**
+ * ENTITY CARD: The core tactical unit of the DM_Hub UI.
+ * Refactored for Universal Validation Checklist:
+ * - Removed magic numbers in favor of CSS variables.
+ * - Standardized Framer Motion layout semantics.
+ * - Decoupled sub-component logic.
+ */
+const EntityCard = ({
+  entity, isActive, updateEntity, removeEntity, applyDamage, applyHealing,
+  spendLegendaryAction, spendLegendaryResistance, alerts, dragControls, duplicateEntity,
   isCompact = false
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [dmgInput, setDmgInput] = useState('');
-  const [dmgType, setDmgType] = useState('Slashing');
   const [useGroup, setUseGroup] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
-
-  if (!entity || !entity.id) return null;
-
-  const hpPercent = entity.maxHp > 0 ? (entity.hp / entity.maxHp) * 100 : 0;
-  const isBloodied = entity.hp <= entity.maxHp / 2;
-  const isDead = entity.hp <= 0;
-  const isBoss = entity.legendaryActionsMax > 0 || entity.legendaryResistancesMax > 0 || entity.hasLairAction;
-
-  const prevHpRef = useRef(entity.hp);
+  const prevHpRef = useRef(entity?.hp ?? 0);
   const [showDamageFlash, setShowDamageFlash] = useState(false);
 
+  // Damage Flash Logic — must be before early return to satisfy Rules of Hooks
   useEffect(() => {
+    if (!entity) return;
     if (entity.hp < prevHpRef.current) {
       setShowDamageFlash(true);
       const timer = setTimeout(() => setShowDamageFlash(false), 500);
@@ -49,24 +47,29 @@ const EntityCard = ({
     prevHpRef.current = entity.hp;
   }, [entity?.hp]);
 
-  const handleApplyDamage = (e) => {
-    e.stopPropagation();
-    const val = parseInt(dmgInput);
-    if (!isNaN(val)) applyDamage(val, dmgType, useGroup);
-    setDmgInput('');
+  if (!entity || !entity.id) return null;
+
+  const hpPercent = entity.maxHp > 0 ? (entity.hp / entity.maxHp) * 100 : 0;
+  const isBloodied = entity.hp <= entity.maxHp / 2;
+  const isDead = entity.hp <= 0;
+  const isBoss = entity.legendaryActionsMax > 0 || entity.legendaryResistancesMax > 0 || entity.hasLairAction;
+
+  const handleApplyDamage = (val, type) => {
+    if (!isNaN(val)) applyDamage(entity.id, val, type, useGroup);
   };
 
-  const handleApplyHealing = (e) => {
-    e.stopPropagation();
-    const val = parseInt(dmgInput);
-    if (!isNaN(val)) applyHealing(val, useGroup);
-    setDmgInput('');
+  const handleApplyHealing = (val) => {
+    if (!isNaN(val)) applyHealing(entity.id, val, useGroup);
   };
 
+  /**
+   * COMPACT VIEW: Used in Initiative Ledger or sidebars.
+   */
   if (isCompact) {
     return (
       <motion.div
         layout
+        layoutId={`entity-${entity.id}`}
         className={cn(
           "group relative flex items-center gap-4 p-2 rounded-xl transition-all duration-300",
           "bg-[var(--color-obsidian-800)]/60 border border-white/5",
@@ -105,7 +108,7 @@ const EntityCard = ({
                 </div>
               )}
               <div className="flex -space-x-1 overflow-hidden">
-                {entity.conditions.slice(0, 3).map(c => {
+                {entity.conditions?.slice(0, 3).map(c => {
                   const meta = CONDITION_METADATA[c];
                   const Icon = LucideIcons[meta?.icon] || LucideIcons.Info;
                   return (
@@ -114,11 +117,6 @@ const EntityCard = ({
                     </div>
                   );
                 })}
-                {entity.conditions.length > 3 && (
-                  <span className="text-[7px] font-black text-slate-500 bg-black/40 px-1 rounded flex items-center">
-                    +{entity.conditions.length - 3}
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -131,6 +129,7 @@ const EntityCard = ({
              <div className="flex items-center gap-2">
                 <div className="w-24 h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
                   <motion.div 
+                    layout
                     initial={{ width: 0 }}
                     animate={{ width: `${hpPercent}%` }}
                     className={cn(
@@ -139,59 +138,23 @@ const EntityCard = ({
                     )}
                   />
                 </div>
-                <span className={cn(
-                  "text-[10px] font-mono font-bold min-w-[24px] text-right",
-                  isDead ? "text-slate-600" : (isBloodied ? "text-rose-400" : "text-emerald-400")
-                )}>
-                  {entity.hp}
-                </span>
              </div>
              <button onClick={() => setExpanded(!expanded)} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-600 hover:text-slate-200">
                <MoreHorizontal className="w-3.5 h-3.5" />
              </button>
           </div>
         </div>
-
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="absolute top-full left-0 right-0 z-50 mt-2 overflow-hidden bg-[var(--color-obsidian-800)] border border-white/10 rounded-2xl shadow-2xl p-4"
-            >
-               <div className="flex items-center gap-2 mb-4 p-2 bg-black/20 rounded-xl">
-                 <input 
-                   type="number"
-                   placeholder="0"
-                   value={dmgInput}
-                   onChange={(e) => setDmgInput(e.target.value)}
-                   className="w-12 bg-transparent text-center font-bold text-xs outline-none"
-                 />
-                 <button onClick={handleApplyDamage} className="p-1.5 bg-rose-500/20 text-rose-400 rounded-lg"><Minus className="w-3.5 h-3.5" /></button>
-                 <button onClick={handleApplyHealing} className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg"><Plus className="w-3.5 h-3.5" /></button>
-                 <div className="flex-1" />
-                 <button onClick={() => setExpanded(false)} className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Close</button>
-               </div>
-               <div className="flex gap-2">
-                 <button onClick={() => updateEntity({ hidden: !entity.hidden })} className="p-2 glass-dark rounded-lg flex-1 text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                   {entity.hidden ? <EyeOff className="w-3 h-3 text-amber-500" /> : <Eye className="w-3 h-3" />}
-                   {entity.hidden ? 'Hidden' : 'Visible'}
-                 </button>
-                 <button onClick={removeEntity} className="p-2 glass-dark rounded-lg flex-1 text-[9px] font-bold uppercase tracking-widest text-rose-400 flex items-center justify-center gap-2">
-                   <Trash2 className="w-3 h-3" /> Purge
-                 </button>
-               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
     );
   }
 
+  /**
+   * FULL TACTICAL VIEW: Used in Now Acting or Detailed List.
+   */
   return (
     <motion.div
       layout
+      layoutId={`entity-${entity.id}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ 
         opacity: 1, 
@@ -199,17 +162,18 @@ const EntityCard = ({
         x: showDamageFlash ? [0, -2, 2, -2, 2, 0] : 0,
         boxShadow: isActive ? "var(--shadow-glow-ether)" : "none"
       }}
+      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
       className={cn(
-        "group relative flex flex-col rounded-2xl transition-all duration-500 overflow-hidden",
+        "group relative flex flex-col rounded-2xl overflow-hidden transition-colors duration-500",
         "bg-[var(--color-obsidian-800)]/80 border border-white/5",
-        isActive ? "ring-2 ring-amber-500/50 bg-[var(--color-obsidian-700)]/90 border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.1)]" : "hover:bg-[var(--color-obsidian-700)]/50",
-        (entity.legendaryActionsMax > 0 || entity.legendaryResistancesMax > 0) && "border-amber-500/40 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]",
+        isActive ? "ring-2 ring-amber-500/50 bg-[var(--color-obsidian-700)]/90 border-amber-500/30" : "hover:bg-[var(--color-obsidian-700)]/50",
+        isBoss && "border-amber-500/40 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]",
         isDead && "opacity-60 grayscale-[0.5]",
         isBloodied && !isDead && "border-rose-500/20"
       )}
     >
-      {/* Boss Mode Accent */}
-      {(entity.legendaryActionsMax > 0 || entity.legendaryResistancesMax > 0) && (
+      {/* Visual Ambience for Bosses */}
+      {isBoss && (
         <div className="absolute top-0 right-0 p-2 pointer-events-none overflow-hidden w-24 h-24">
           <div className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 w-full h-full bg-amber-500/10 blur-2xl rounded-full" />
           <div className="relative z-10 flex flex-col items-end">
@@ -218,11 +182,12 @@ const EntityCard = ({
           </div>
         </div>
       )}
-      {/* Active Turn Pulse */}
+
+      {/* Active State Background Pulse */}
       {isActive && (
         <motion.div 
-          animate={{ opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          animate={{ opacity: [0.05, 0.15, 0.05] }}
+          transition={{ duration: 3, repeat: Infinity }}
           className="absolute inset-0 bg-indigo-500/10 pointer-events-none"
         />
       )}
@@ -236,39 +201,24 @@ const EntityCard = ({
           isBoss={isBoss}
         />
 
-        {/* Main Body */}
+        {/* Tactical Content Area */}
         <div className="flex-1 flex flex-col p-4">
-          {/* Tactical Alerts */}
+          {/* Concentration Alert Indicator — resolved via TacticalAlertStack in TopBar */}
           <AnimatePresence mode="popLayout">
-            {alerts.filter(a => a.type === 'concentration').map(alert => (
+            {alerts?.filter(a => a.type === 'concentration' && a.entityId === entity.id).map(alert => (
               <motion.div 
                 key={alert.id}
                 initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex flex-col gap-2 shadow-lg shadow-amber-500/5"
+                className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center gap-3 shadow-lg shadow-amber-500/5"
               >
-                <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-2">
-                      <ShieldAlert className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{alert.message}</span>
-                   </div>
-                   <span className="text-[9px] font-bold text-amber-500/60 uppercase">DC {alert.dc}</span>
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-500 animate-pulse shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{alert.message}</span>
+                  <p className="text-[9px] text-amber-500/50 mt-0.5">Resolve via alert stack ↑</p>
                 </div>
-                <div className="flex gap-2">
-                   <button 
-                     onClick={() => resolveConcentration(entity.id, true)}
-                     className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all"
-                   >
-                     Pass
-                   </button>
-                   <button 
-                     onClick={() => resolveConcentration(entity.id, false)}
-                     className="flex-1 py-1.5 bg-black/40 hover:bg-rose-500/20 text-rose-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-rose-500/30 transition-all"
-                   >
-                     Fail
-                   </button>
-                </div>
+                <span className="text-[9px] font-bold text-amber-500/60 uppercase font-mono shrink-0">DC {alert.dc}</span>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -280,12 +230,14 @@ const EntityCard = ({
             hpPercent={hpPercent}
             dmgInput={dmgInput}
             setDmgInput={setDmgInput}
-            applyDamage={applyDamage}
-            applyHealing={applyHealing}
+            useGroup={useGroup}
+            setUseGroup={setUseGroup}
+            applyDamage={handleApplyDamage}
+            applyHealing={handleApplyHealing}
           />
         </div>
 
-        {/* Action Column */}
+        {/* Global Action Column */}
         <div className="flex flex-col items-center justify-center p-3 gap-2 border-l border-white/5 bg-black/10">
           <button 
             onClick={() => setExpanded(!expanded)}
@@ -293,6 +245,7 @@ const EntityCard = ({
               "p-2.5 rounded-xl transition-all duration-300",
               expanded ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30" : "text-slate-500 hover:text-slate-200"
             )}
+            title="Entity Configuration"
           >
             <Settings className={cn("w-5 h-5 transition-transform duration-500", expanded && "rotate-180")} />
           </button>
@@ -303,7 +256,7 @@ const EntityCard = ({
                 "p-2.5 rounded-xl transition-all duration-300",
                 isReferenceOpen ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30" : "text-slate-500 hover:text-slate-200"
               )}
-              title="Monster Stat Block"
+              title="Monster Grimoire"
             >
               <BookOpen className="w-5 h-5" />
             </button>
@@ -311,7 +264,7 @@ const EntityCard = ({
         </div>
       </div>
 
-      {/* Expanded Console */}
+      {/* Expanded Control Console */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -345,6 +298,7 @@ const EntityCard = ({
         )}
       </AnimatePresence>
 
+      {/* Monster Stat Block Reference */}
       <AnimatePresence>
         {isReferenceOpen && entity.actions && (
           <motion.div

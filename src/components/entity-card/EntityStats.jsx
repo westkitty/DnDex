@@ -2,12 +2,11 @@ import React from 'react';
 import { GripVertical, Eye, EyeOff, Shield, Target, Sparkles, Brain } from 'lucide-react';
 import { cn } from './entityCardUtils';
 
-const EntityStats = ({ 
-  entity, 
-  isActive, 
-  updateEntity, 
-  dragControls,
-  isBoss 
+const EntityStats = ({
+  entity,
+  isActive,
+  updateEntity,
+  dragControls
 }) => {
   return (
     <>
@@ -55,9 +54,8 @@ const EntityStats = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-3 px-3 py-1.5 glass-dark rounded-xl border border-white/5">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 px-3 py-1.5 glass-dark rounded-xl border border-white/5">
+              <div className="flex items-center gap-1.5" title="Armor Class">
                 <Shield className="w-3.5 h-3.5 text-indigo-400" />
                 <input 
                   type="number"
@@ -66,8 +64,29 @@ const EntityStats = ({
                   className="w-5 bg-transparent text-xs font-bold text-slate-200 outline-none"
                 />
               </div>
+              <div className="flex items-center gap-1.5 border-l border-white/10 pl-3" title="Max HP">
+                <Brain className="w-3.5 h-3.5 text-emerald-400" />
+                <input 
+                  type="number"
+                  value={entity.maxHp || 10}
+                  onChange={(e) => {
+                    const newMax = parseInt(e.target.value) || 1;
+                    updateEntity({ maxHp: newMax, hp: Math.min(entity.hp, newMax) });
+                  }}
+                  className="w-7 bg-transparent text-xs font-bold text-slate-200 outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 border-l border-white/10 pl-3" title="Temporary HP / Ward">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <input 
+                  type="number"
+                  value={entity.tempHp || 0}
+                  onChange={(e) => updateEntity({ tempHp: parseInt(e.target.value) || 0 })}
+                  className="w-5 bg-transparent text-xs font-bold text-slate-200 outline-none"
+                />
+              </div>
               {!entity.isPlayer && (
-                <div className="flex items-center gap-1.5 border-l border-white/10 pl-3">
+                <div className="flex items-center gap-1.5 border-l border-white/10 pl-3" title="Spell Save DC">
                   <Target className="w-3.5 h-3.5 text-rose-400" />
                   <input 
                     type="number"
@@ -78,7 +97,6 @@ const EntityStats = ({
                 </div>
               )}
             </div>
-          </div>
         </div>
       </div>
     </>

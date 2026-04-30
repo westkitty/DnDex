@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Minus, Plus, ChevronRight } from 'lucide-react';
+import { Minus, Plus, ChevronRight, Users } from 'lucide-react';
 import { cn } from './entityCardUtils';
 
 const EntityHP = ({
@@ -10,6 +10,8 @@ const EntityHP = ({
   hpPercent,
   dmgInput,
   setDmgInput,
+  useGroup,
+  setUseGroup,
   applyDamage,
   applyHealing
 }) => {
@@ -71,6 +73,18 @@ const EntityHP = ({
 
       {/* Quick Action Bar */}
       <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-white/5 shadow-inner">
+        {entity.groupId && (
+          <button 
+            onClick={() => setUseGroup(!useGroup)}
+            className={cn(
+              "p-2 rounded-lg transition-all border",
+              useGroup ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-400" : "bg-white/5 border-transparent text-slate-600 hover:text-slate-400"
+            )}
+            title="Target Group"
+          >
+            <Users className="w-4 h-4" />
+          </button>
+        )}
         <input 
           type="number"
           placeholder="0"

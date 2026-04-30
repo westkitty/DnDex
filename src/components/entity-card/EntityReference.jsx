@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const EntityReference = ({ entity }) => {
   if (!entity.actions) return null;

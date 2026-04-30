@@ -26,6 +26,24 @@ const EntityConditions = ({
         </button>
       </div>
 
+      {entity.effects && entity.effects.length > 0 && (
+        <div className="pt-4 border-t border-white/5">
+          <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <LucideIcons.Sparkles className="w-3 h-3" /> Active Effects
+          </h4>
+          <div className="space-y-2">
+            {entity.effects.map((effect, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                <span className="text-[10px] font-bold text-emerald-100">{effect.name}</span>
+                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                  {effect.duration} Rnds
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="pt-2">
         <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4 flex items-center gap-2 px-2">
           <Shield className="w-3 h-3" /> Conditions Palette

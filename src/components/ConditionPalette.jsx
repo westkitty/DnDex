@@ -9,7 +9,7 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const ConditionPalette = ({ activeConditions, onToggleCondition, onClose }) => {
+const ConditionPalette = ({ activeConditions, onToggleCondition }) => {
   return (
     <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-2">
       {CONDITIONS.map(condition => {

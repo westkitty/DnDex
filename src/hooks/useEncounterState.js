@@ -101,7 +101,7 @@ export const useEncounterState = () => {
         channel.close();
         
         setSyncStatus(SYNC_STATES.IDLE);
-      } catch (err) {
+      } catch {
         setSyncStatus(SYNC_STATES.ERROR);
       }
     };

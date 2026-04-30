@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Trash2, RotateCcw, X, Clock, Plus, Target } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs) {
-  return twMerge(clsx(inputs));
-}
-
-const SnapshotDrawer = ({ isOpen, onClose, state, saveSnapshot, loadSnapshot, deleteSnapshot }) => {
+const SnapshotDrawer = ({ onClose, state, saveSnapshot, loadSnapshot, deleteSnapshot }) => {
   const [newName, setNewName] = useState('');
 
   const handleSave = () => {
@@ -36,7 +29,7 @@ const SnapshotDrawer = ({ isOpen, onClose, state, saveSnapshot, loadSnapshot, de
           <div className="flex flex-col">
             <div className="flex items-center gap-2 mb-0.5">
                <Camera className="w-4 h-4 text-emerald-400" />
-               <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Temporal Echoes</span>
+               <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Chronological Archives</span>
             </div>
             <h2 className="text-xl font-black text-slate-100 uppercase italic tracking-wider">Snapshots</h2>
           </div>

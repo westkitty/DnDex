@@ -28,7 +28,7 @@ export const MAP_TEMPLATES = {
   TAVERN_FLOOR: {
     id: 'tavern-floor',
     name: "Small Tavern",
-    baseTile: "wood_plank",
+    baseTile: "wood_floor",
     dimensions: { width: 15, height: 15 },
     decorations: [
       { id: 'table-1', type: 'object', assetId: 'wood_table', x: 3, y: 3, scale: 1 },

@@ -68,15 +68,14 @@ const cn = (...inputs) => {
   return inputs.filter(Boolean).join(' ');
 };
 
-const InitiativeLedger = ({ encounter }) => {
+const InitiativeLedger = ({ encounter, toggleBestiary }) => {
   const { 
     state, setEntitiesOrder, updateEntity, removeEntity, 
-    applyDamage, applyGroupDamage, applyHealing, resolveConcentration,
-    spendLegendaryAction, spendLegendaryResistance, duplicateEntity, addEntity, loadEncounter
+    applyDamage, applyBulkDamage, applyHealing, resolveConcentration,
+    spendLegendaryAction, spendLegendaryResistance, duplicateEntity, addEntity, loadEncounter, triggerLairAction
   } = encounter;
   const { entities, turnIndex, alerts } = state;
   const [isCompact, setIsCompact] = useState(false);
-  const [isBestiaryOpen, setIsBestiaryOpen] = useState(false);
   const [isGroupDamageOpen, setIsGroupDamageOpen] = useState(false);
   const activeRef = useRef(null);
 
@@ -138,7 +137,7 @@ const InitiativeLedger = ({ encounter }) => {
             Area Damage
           </button>
           <button 
-            onClick={() => setIsBestiaryOpen(true)}
+            onClick={toggleBestiary}
             className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl border border-indigo-500/30 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all"
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -158,7 +157,7 @@ const InitiativeLedger = ({ encounter }) => {
         isOpen={isGroupDamageOpen}
         onClose={() => setIsGroupDamageOpen(false)}
         entities={entities}
-        onApply={applyGroupDamage}
+        onApply={applyBulkDamage}
       />
 
       <Reorder.Group 
@@ -172,7 +171,13 @@ const InitiativeLedger = ({ encounter }) => {
             const isActive = index === turnIndex;
             const isUpcoming = index === (turnIndex + 1) % entities.length;
             const isUpcomingNext = index === (turnIndex + 2) % entities.length || index === (turnIndex + 3) % entities.length;
-            const showLairActionMarker = index === 0 && entity.initiative < 20 || (index > 0 && entities[index-1].initiative >= 20 && entity.initiative < 20);
+            // B12 FIX: only show lair action marker when at least one entity has hasLairAction,
+            // and this is the first entity whose initiative drops below 20 (the count-20 boundary)
+            const anyHasLairAction = entities.some(e => e.hasLairAction);
+            const showLairActionMarker = anyHasLairAction && (
+              (index === 0 && entity.initiative < 20) ||
+              (index > 0 && entities[index - 1].initiative >= 20 && entity.initiative < 20)
+            );
             const isDead = entity.hp <= 0;
             
             return (
@@ -184,13 +189,29 @@ const InitiativeLedger = ({ encounter }) => {
                     className="flex items-center gap-4 py-3 px-4 rounded-xl bg-rose-500/5 border border-rose-500/10 mb-4"
                   >
                     <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
-                    <span className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">
-                      Lair Actions Phase (Init 20)
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                      <span className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">Lair Actions Phase (Init 20)</span>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); triggerLairAction(); }}
+                      className="px-4 py-1 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-400 hover:text-white rounded-lg border border-indigo-500/30 text-[10px] font-black uppercase transition-all active:scale-90"
+                    >
+                      Trigger Lair Action
+                    </button>
                     <div className="flex-1 h-px bg-gradient-to-r from-rose-500/20 to-transparent" />
                   </motion.div>
                 )}
-                <div className={cn("transition-opacity duration-500", isDead && !isActive && "opacity-40 grayscale-[0.8]")}>
+                <div className={cn(
+                  "transition-opacity duration-500 relative",
+                  isDead && !isActive && "opacity-40 grayscale-[0.8]",
+                  entity.hidden && "opacity-60"
+                )}>
+                  {entity.hidden && (
+                    <div className="absolute -top-2 right-2 z-20 px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded-full text-[8px] font-black text-amber-500 uppercase tracking-widest">
+                      Hidden
+                    </div>
+                  )}
                   <InitiativeItem
                     entity={entity}
                     index={index}
@@ -224,15 +245,6 @@ const InitiativeLedger = ({ encounter }) => {
           <Flag className="w-3 h-3" /> End of Deployment
         </div>
       </div>
-
-      <BestiaryDrawer 
-        isOpen={isBestiaryOpen} 
-        onClose={() => setIsBestiaryOpen(false)}
-        onAddEntity={(monster) => {
-          addEntity(monster.isPlayer || false, monster);
-          setIsBestiaryOpen(false);
-        }}
-      />
     </div>
   );
 };

@@ -1,25 +1,28 @@
 import React, { useState, useRef } from 'react';
 import { 
   ChevronRight, ChevronLeft, Undo, Redo, Book, UserPlus, Ghost, 
-  Settings, Download, Shield, Swords, FileUp, Skull, Camera, Search
+  Settings, Download, Shield, Swords, FileUp, Skull, Camera, Plus, Layout, RotateCcw
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import TacticalAlertStack from './TacticalAlertStack';
 import { useToast } from './ToastProvider';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from './entity-card/entityCardUtils';
 
-function cn(...inputs) {
-  return twMerge(clsx(inputs));
-}
-
+/**
+ * TOP BAR: High-level command center for the DM_Hub.
+ * Refactored for:
+ * - Progressive disclosure on mobile.
+ * - FSM-aligned modal triggers.
+ * - Consistent design token application.
+ */
 const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view, setView }) => {
   const { 
-    state, advanceTurn, undo, redo, canUndo, canRedo, 
-    addEntity, importState, exportState, clearAlert, resolveConcentration 
+    state, advanceTurn, undo, redo, canUndo, canRedo,
+    addEntity, importState, exportState, clearAlert, resolveConcentration, clearEncounter, resetMap
   } = encounter;
   const { showToast } = useToast();
   const [showExport, setShowExport] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleExport = (type) => {
@@ -34,9 +37,7 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
           isPlayer: e.isPlayer,
           conditions: e.conditions,
           concentration: e.concentration,
-          ac: e.isPlayer ? e.ac : undefined,
-          dc: e.isPlayer ? e.dc : undefined,
-          narrativeNotes: e.isPlayer ? e.narrativeNotes : undefined
+          ac: e.isPlayer ? e.ac : undefined
         }));
       data.alerts = [];
       data.logs = [];
@@ -53,50 +54,71 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
   };
 
   return (
-    <header className="min-h-20 py-4 flex flex-col md:flex-row items-center justify-between px-4 md:px-6 bg-[var(--color-obsidian-900)] border-b border-white/5 z-40 relative gap-4">
-      {/* Branding & Round */}
-      <div className="flex items-center justify-between w-full md:w-auto gap-4 md:gap-8">
+    <header className="min-h-20 py-3 flex flex-col md:flex-row items-center justify-between px-4 md:px-6 bg-[var(--color-obsidian-900)] border-b border-white/5 z-40 relative gap-3">
+      {/* 1. Branding & Navigation */}
+      <div className="flex items-center justify-between w-full md:w-auto gap-4">
         <div className="flex flex-col">
           <h1 className="text-lg md:text-xl font-black tracking-[0.2em] text-gradient-ether uppercase italic">
             DM HUB
           </h1>
-          <div className="hidden sm:flex items-center gap-1.5 -mt-1">
-             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-             <span className="text-[8px] font-bold text-slate-500 tracking-[0.3em] uppercase">Tactical Link</span>
+          <div className="flex items-center gap-1.5 -mt-1">
+             <div className="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+             <span className="text-[7px] font-bold text-slate-600 tracking-[0.3em] uppercase">Tactical Engine</span>
           </div>
         </div>
 
-        <div className="hidden md:block h-10 w-px bg-white/5 mx-2" />
-
-        <div className="flex items-center gap-3 md:gap-4">
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Round</span>
-            <div className="h-10 px-3 md:px-4 glass-dark flex items-center justify-center rounded-xl border-indigo-500/20 text-lg md:text-xl font-mono font-bold text-indigo-400 shadow-[var(--shadow-glow-ether)]">
-              {state.round}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-1 md:gap-2 bg-black/40 p-1 md:p-1.5 rounded-2xl border border-white/5 shadow-inner">
-            <button 
-              onClick={() => advanceTurn(-1)} 
-              className="p-1.5 md:p-2 text-slate-500 hover:text-slate-100 transition-colors"
-              title="Prev Turn"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => advanceTurn(1)} 
-              className="px-3 md:px-6 py-2 md:py-2.5 bg-indigo-600 hover:bg-indigo-400 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all active:scale-95 group"
-            >
-              <span className="hidden sm:inline">Next Action</span>
-              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </button>
-          </div>
+        <div className="flex items-center gap-2 bg-black/30 p-1 rounded-xl border border-white/5 shadow-inner">
+          <button 
+            onClick={() => setView('list')}
+            className={cn(
+              "p-2 rounded-lg transition-all",
+              view === 'list' ? "bg-white/10 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+            )}
+            title="List View"
+          >
+            <Layout className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => setView('map')}
+            className={cn(
+              "p-2 rounded-lg transition-all",
+              view === 'map' ? "bg-white/10 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+            )}
+            title="Tactical Map"
+          >
+            <Camera className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      {/* Tactical Alert Hub */}
-      <div className="flex-1 flex items-center h-10 min-w-0 max-w-md">
+      {/* 2. Round Tracker & Turn Controls */}
+      <div className="flex items-center gap-3 md:gap-4 order-3 md:order-none">
+        <div className="flex flex-col items-center">
+          <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Round</span>
+          <div className="h-10 px-4 glass-dark flex items-center justify-center rounded-xl border-indigo-500/20 text-lg md:text-xl font-mono font-bold text-indigo-400 shadow-[var(--shadow-glow-ether)]">
+            {state.round}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-1.5 bg-black/40 p-1.5 rounded-2xl border border-white/5">
+          <button 
+            onClick={() => advanceTurn(-1)} 
+            className="p-2 text-slate-500 hover:text-slate-100 transition-colors hover:bg-white/5 rounded-lg"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => advanceTurn(1)} 
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-[11px] uppercase tracking-wider shadow-lg shadow-indigo-600/20 flex items-center gap-2 transition-all active:scale-95 group"
+          >
+            <span>Next Action</span>
+            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Tactical Alerts */}
+      <div className="hidden lg:flex flex-1 items-center justify-center h-10 px-8">
          <TacticalAlertStack 
            alerts={state.alerts} 
            clearAlert={clearAlert}
@@ -104,40 +126,19 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
          />
       </div>
 
-      {/* View & History & Tools */}
-      <div className="flex items-center gap-3 md:gap-6 flex-wrap justify-center md:justify-end">
-        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
-          <button 
-            onClick={() => setView('list')}
-            className={cn(
-              "px-3 md:px-5 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-              view === 'list' ? "bg-white/10 text-white" : "text-slate-500 hover:text-slate-300"
-            )}
-          >
-            List
-          </button>
-          <button 
-            onClick={() => setView('map')}
-            className={cn(
-              "px-3 md:px-5 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-              view === 'map' ? "bg-white/10 text-white" : "text-slate-500 hover:text-slate-300"
-            )}
-          >
-            Map
-          </button>
-        </div>
-
-        <div className="flex bg-black/40 rounded-xl border border-white/5 p-1">
+      {/* 4. Global Action Hub */}
+      <div className="flex items-center gap-2 md:gap-4 justify-end">
+        {/* History Controls */}
+        <div className="flex bg-black/30 rounded-xl border border-white/5 p-1">
           <button 
             onClick={() => {
               const note = undo();
               if (note) showToast(`Reverted: ${note}`, 'history');
             }} 
             disabled={!canUndo} 
-            className="p-2 md:p-2.5 hover:bg-white/5 disabled:opacity-20 text-slate-400 transition-colors"
-            title="Undo"
+            className="p-2 hover:bg-white/5 disabled:opacity-20 text-slate-500 transition-colors"
           >
-            <Undo className="w-4 h-4" />
+            <Undo className="w-3.5 h-3.5" />
           </button>
           <button 
             onClick={() => {
@@ -145,108 +146,117 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
               if (note) showToast(`Restored: ${note}`, 'history');
             }} 
             disabled={!canRedo} 
-            className="p-2 md:p-2.5 hover:bg-white/5 disabled:opacity-20 text-slate-400 transition-colors"
-            title="Redo"
+            className="p-2 hover:bg-white/5 disabled:opacity-20 text-slate-500 transition-colors"
           >
-            <Redo className="w-4 h-4" />
+            <Redo className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Quick Add Menu */}
+        <div className="relative">
           <button 
-            onClick={() => addEntity(true)} 
-            className="p-2.5 md:px-4 md:py-2.5 glass-dark hover:bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl transition-all group"
-            title="Add Hero"
+            onClick={() => setShowQuickAdd(!showQuickAdd)}
+            className={cn(
+              "p-2.5 rounded-xl transition-all border",
+              showQuickAdd ? "bg-indigo-600 border-indigo-400 text-white shadow-lg" : "glass-dark border-white/10 text-indigo-400 hover:bg-indigo-500/10"
+            )}
           >
-            <UserPlus className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span className="hidden lg:inline text-[10px] font-bold uppercase tracking-widest ml-2">Add Hero</span>
+            <Plus className={cn("w-4 h-4 transition-transform", showQuickAdd && "rotate-45")} />
           </button>
-          <button 
-            onClick={() => addEntity(false)} 
-            className="p-2.5 md:px-4 md:py-2.5 glass-dark hover:bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl transition-all group"
-            title="Add Foe"
-          >
-            <Ghost className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span className="hidden lg:inline text-[10px] font-bold uppercase tracking-widest ml-2">Add Foe</span>
-          </button>
-          <button 
-            onClick={toggleBestiary} 
-            className="p-2.5 md:px-4 md:py-2.5 glass-dark hover:bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl transition-all group shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-            title="Open Bestiary"
-          >
-            <Skull className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span className="hidden lg:inline text-[10px] font-bold uppercase tracking-widest ml-2">Bestiary</span>
-          </button>
+          <AnimatePresence>
+            {showQuickAdd && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="absolute right-0 top-full mt-3 w-48 glass-dark border border-white/10 rounded-2xl p-2 shadow-2xl z-50 overflow-hidden"
+              >
+                <button onClick={() => { addEntity(true); setShowQuickAdd(false); }} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-100 flex items-center gap-3">
+                  <UserPlus className="w-3.5 h-3.5 text-indigo-400" /> New Hero
+                </button>
+                <button onClick={() => { addEntity(false); setShowQuickAdd(false); }} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-100 flex items-center gap-3">
+                  <Ghost className="w-3.5 h-3.5 text-rose-400" /> New Foe
+                </button>
+                <div className="h-px bg-white/5 my-1" />
+                <button onClick={() => { toggleBestiary(); setShowQuickAdd(false); }} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-amber-100 flex items-center gap-3">
+                  <Skull className="w-3.5 h-3.5 text-amber-500" /> From Bestiary
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Tools Menu */}
+        <div className="flex items-center gap-1.5">
+          <button onClick={toggleRules} className="p-2.5 glass-dark border border-white/10 rounded-xl text-slate-400 hover:text-white transition-colors" title="Rules Reference">
+            <Book className="w-4 h-4" />
+          </button>
+          <button onClick={toggleSnapshots} className="p-2.5 glass-dark border border-white/10 rounded-xl text-slate-400 hover:text-white transition-colors" title="Snapshots">
+            <Camera className="w-4 h-4" />
+          </button>
           <div className="relative">
             <button 
-              onClick={() => setShowExport(!showExport)} 
+              onClick={() => setShowExport(!showExport)}
               className={cn(
-                "p-2.5 md:p-3 rounded-xl transition-all",
-                showExport ? "bg-white/10 text-white" : "glass hover:bg-white/5 text-slate-400"
+                "p-2.5 rounded-xl transition-all border",
+                showExport ? "bg-white/10 border-white/20 text-white" : "glass-dark border-white/10 text-slate-500 hover:text-slate-200"
               )}
-              title="Settings & Export"
             >
               <Settings className="w-4 h-4" />
             </button>
             <AnimatePresence>
               {showExport && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 15 }}
-                  className="absolute right-0 top-full mt-4 w-56 glass-dark z-50 rounded-2xl border border-white/10 p-2 shadow-2xl"
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute right-0 top-full mt-3 w-56 glass-dark border border-white/10 rounded-2xl p-2 shadow-2xl z-50"
                 >
                   <div className="px-3 py-2 border-b border-white/5 mb-2">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Mission Controls</span>
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Data Management</span>
                   </div>
-                  <button onClick={exportState} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-xs font-bold flex items-center gap-3 transition-colors">
-                    <Download className="w-4 h-4 text-indigo-400" /> Save Campaign
+                  <button onClick={exportState} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-3">
+                    <Download className="w-3.5 h-3.5" /> Archive Campaign
                   </button>
-                  <button onClick={() => handleExport('player')} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-xs font-bold flex items-center gap-3 transition-colors">
-                    <Swords className="w-4 h-4 text-rose-400" /> Player Intel
+                  <button onClick={() => handleExport('player')} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-400 flex items-center gap-3">
+                    <Swords className="w-3.5 h-3.5" /> Player Handout
                   </button>
                   <div className="h-px bg-white/5 my-2" />
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-xs font-bold flex items-center gap-3 transition-colors">
-                    <FileUp className="w-4 h-4 text-emerald-400" /> Load File
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-3">
+                    <FileUp className="w-3.5 h-3.5" /> Upload Session
                   </button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept=".json" 
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => importState(JSON.parse(ev.target.result));
-                        reader.readAsText(file);
-                      }
-                      e.target.value = '';
-                    }} 
-                  />
+                  <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        try {
+                          const parsed = JSON.parse(ev.target.result);
+                          const ok = importState(parsed);
+                          if (ok) {
+                            showToast('Session restored successfully.', 'info');
+                            setShowExport(false);
+                          } else {
+                            showToast('Invalid encounter schema — check file format.', 'warning', 6000);
+                          }
+                        } catch {
+                          showToast('Failed to parse file — not valid JSON.', 'error', 6000);
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                    e.target.value = '';
+                  }} />
+                  <button onClick={() => { if(confirm("Purge encounter data?")) clearEncounter(); }} className="w-full text-left px-3 py-2.5 hover:bg-rose-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-500 flex items-center gap-3">
+                    <Skull className="w-3.5 h-3.5" /> Wipe Encounter
+                  </button>
+                  <button onClick={() => { if(confirm("Reset map view and tokens?")) resetMap(); }} className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-3">
+                    <RotateCcw className="w-3.5 h-3.5" /> Reset Battlefield
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-
-          <button 
-            onClick={toggleSnapshots} 
-            className="p-2.5 md:p-3 glass hover:bg-white/5 rounded-xl text-slate-400 transition-all"
-            title="Snapshots"
-          >
-            <Camera className="w-4 h-4" />
-          </button>
-
-          <button 
-            onClick={toggleRules} 
-            className="p-2.5 md:p-3 glass hover:bg-white/5 rounded-xl text-slate-400 transition-all"
-            title="Reference Rules"
-          >
-            <Book className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </header>

@@ -36,7 +36,7 @@ export const RULES_DATABASE = [
 const RulesPanel = ({ encounter, onClose, initialQuery = '' }) => {
   const [activeTab, setActiveTab] = useState(initialQuery ? 'library' : 'ledger'); 
   const [query, setQuery] = useState(initialQuery);
-  const { state, updateState } = encounter;
+  const { state, clearLogs } = encounter;
 
   // Sync with initialQuery if it changes (e.g. from Command Palette)
   React.useEffect(() => {
@@ -164,7 +164,7 @@ const RulesPanel = ({ encounter, onClose, initialQuery = '' }) => {
             >
               <ActionLedger 
                 logs={state.logs || []} 
-                onClear={() => updateState(prev => ({ ...prev, logs: [] }), "Audit log purged.")} 
+                onClear={clearLogs} 
               />
             </motion.div>
           )}

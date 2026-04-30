@@ -3,17 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, Shield, Zap, Minus, Plus, Brain, 
   Skull, Target, ChevronRight, AlertTriangle,
-  Flame, Droplet, Wind, Sparkles
+  Flame, Droplet, Wind, Sparkles, Users
 } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from './entity-card/entityCardUtils';
+import EntityConditions from './entity-card/EntityConditions';
 
 const DAMAGE_TYPES = ['Slashing', 'Piercing', 'Bludgeoning', 'Fire', 'Cold', 'Lightning', 'Thunder', 'Poison', 'Acid', 'Necrotic', 'Radiant', 'Force', 'Psychic'];
 
+/**
+ * NOW ACTING PANEL: The focused view for the current entity in the initiative order.
+ * Refactored for:
+ * - Group targeting support.
+ * - Standardized design tokens.
+ * - Reactive visual feedback.
+ */
 const NowActingPanel = ({ 
   round, 
   activeEntity, 
@@ -26,12 +29,16 @@ const NowActingPanel = ({
 }) => {
   const [dmgInput, setDmgInput] = useState('');
   const [dmgType, setDmgType] = useState('Slashing');
+  const [useGroup, setUseGroup] = useState(false);
 
   if (!activeEntity) {
     return (
-      <div className="glass-dark rounded-3xl p-8 flex flex-col items-center justify-center text-slate-500 gap-4 border border-white/5">
-        <Sparkles className="w-8 h-8 opacity-20" />
-        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Encounter Stalled</span>
+      <div className="glass-dark rounded-[2rem] p-12 flex flex-col items-center justify-center text-slate-600 gap-6 border border-white/5 border-dashed">
+        <Sparkles className="w-10 h-10 opacity-10" />
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-[12px] font-black uppercase tracking-[0.4em]">Awaiting Combat</span>
+          <span className="text-[10px] font-bold opacity-40">No active turn detected in temporal stream.</span>
+        </div>
       </div>
     );
   }
@@ -42,83 +49,81 @@ const NowActingPanel = ({
 
   const handleApplyDamage = () => {
     const val = parseInt(dmgInput);
-    if (!isNaN(val)) applyDamage(activeEntity.id, val, dmgType);
+    if (!isNaN(val)) applyDamage(activeEntity.id, val, dmgType, useGroup);
     setDmgInput('');
   };
 
   const handleApplyHealing = () => {
     const val = parseInt(dmgInput);
-    if (!isNaN(val)) applyHealing(activeEntity.id, val);
+    if (!isNaN(val)) applyHealing(activeEntity.id, val, useGroup);
     setDmgInput('');
   };
 
   return (
     <motion.div 
       key={`${round}-${activeEntity.id}`}
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      initial={{ opacity: 0, y: 30, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className="relative glass rounded-[2.5rem] p-8 border border-white/10 shadow-2xl overflow-hidden"
+      transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+      className="relative glass rounded-[2.5rem] p-8 md:p-10 border border-white/10 shadow-2xl overflow-hidden"
     >
-      {/* Glow Backdrop */}
+      {/* Background Ambience */}
       <div className={cn(
-        "absolute -top-24 -left-24 w-64 h-64 rounded-full blur-[100px] transition-colors duration-1000",
-        activeEntity.isPlayer ? "bg-indigo-500/20" : "bg-rose-500/20"
+        "absolute -top-32 -left-32 w-80 h-80 rounded-full blur-[120px] transition-colors duration-1000",
+        activeEntity.isPlayer ? "bg-indigo-500/10" : "bg-rose-500/10"
       )} />
 
-      {/* Header Info */}
-      <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-        <div className="space-y-1">
+      {/* Header Context */}
+      <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest border border-white/5">
-              Round {round}
-            </span>
-            <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-2">
+               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Temporal Round</span>
+               <span className="text-[10px] font-bold text-indigo-400 font-mono">{round}</span>
+            </div>
+            <motion.div 
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="px-3 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20 text-[9px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2"
+            >
+              <div className="w-1 h-1 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
               Now Acting
-            </span>
+            </motion.div>
           </div>
           <h2 className={cn(
-            "text-4xl font-serif font-black tracking-tight",
-            activeEntity.isPlayer ? "text-indigo-100" : "text-rose-100"
+            "text-4xl md:text-5xl font-serif font-black tracking-tight",
+            activeEntity.isPlayer ? "text-indigo-50" : "text-rose-50"
           )}>
             {activeEntity.name}
           </h2>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-center px-4 py-2 glass-dark rounded-2xl border border-white/5 min-w-[60px]">
-            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Init</span>
-            <span className="text-xl font-mono font-bold text-indigo-400">{activeEntity.initiative}</span>
-          </div>
-          <div className="flex flex-col items-center px-4 py-2 glass-dark rounded-2xl border border-white/5 min-w-[60px]">
-            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">AC</span>
-            <span className="text-xl font-mono font-bold text-emerald-400">{activeEntity.ac}</span>
-          </div>
-          {activeEntity.dc && (
-            <div className="flex flex-col items-center px-4 py-2 glass-dark rounded-2xl border border-white/5 min-w-[60px]">
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">DC</span>
-              <span className="text-xl font-mono font-bold text-rose-400">{activeEntity.dc}</span>
-            </div>
-          )}
+        <div className="flex items-center gap-3">
+          <StatBlock label="Initiative" value={activeEntity.initiative} color="indigo" />
+          <StatBlock label="Armor Class" value={activeEntity.ac} color="emerald" />
+          {activeEntity.dc && <StatBlock label="Spell DC" value={activeEntity.dc} color="rose" />}
         </div>
       </div>
 
-      {/* HP Bar */}
-      <div className="relative mb-10 space-y-3">
+      {/* Health Console */}
+      <div className="relative mb-12 space-y-4">
         <div className="flex justify-between items-end px-1">
-          <div className="flex items-baseline gap-2">
-            <span className={cn(
-              "text-5xl font-mono font-black tracking-tighter",
-              isDead ? "text-slate-700" : (isBloodied ? "text-rose-400" : "text-emerald-400")
-            )}>
+          <div className="flex items-baseline gap-3">
+            <motion.span 
+              layoutId={`hp-${activeEntity.id}`}
+              className={cn(
+                "text-6xl font-mono font-black tracking-tighter",
+                isDead ? "text-slate-700" : (isBloodied ? "text-rose-400" : "text-emerald-400")
+              )}
+            >
               {activeEntity.hp}
-            </span>
-            <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">/ {activeEntity.maxHp} HP</span>
+            </motion.span>
+            <span className="text-base font-bold text-slate-600 uppercase tracking-[0.2em]">/ {activeEntity.maxHp} <span className="text-[10px]">Vitality</span></span>
           </div>
           {activeEntity.tempHp > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 rounded-full border border-indigo-500/30">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-[10px] font-black text-indigo-400 uppercase">+{activeEntity.tempHp} Temp HP</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 rounded-xl border border-indigo-500/30 shadow-lg shadow-indigo-500/5">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest">+{activeEntity.tempHp} Ward</span>
             </div>
           )}
         </div>
@@ -126,145 +131,169 @@ const NowActingPanel = ({
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${hpPercent}%` }}
-            transition={{ type: "spring", bounce: 0, duration: 1 }}
+            transition={{ type: "spring", bounce: 0, duration: 1.2 }}
             className={cn(
-              "h-full rounded-full relative shadow-lg",
+              "h-full rounded-full relative shadow-[0_0_20px_rgba(0,0,0,0.5)]",
               isDead ? "bg-slate-800" : (isBloodied ? "bg-gradient-to-r from-rose-600 to-rose-400" : "bg-gradient-to-r from-emerald-600 to-emerald-400")
             )}
           >
-            <div className="absolute inset-0 bg-white/10 rounded-full opacity-50 overflow-hidden">
-               <div className="w-full h-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+            <div className="absolute inset-0 bg-white/10 rounded-full opacity-30 overflow-hidden">
+               <div className="w-full h-full animate-[shimmer_3s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Main Grid: Conditions, Legendary, Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="space-y-6">
-          {/* Conditions */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Skull className="w-3.5 h-3.5 text-indigo-400" />
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Conditions</h4>
-            </div>
-            <div className="flex flex-wrap gap-2 min-h-[40px]">
-              {activeEntity.concentration && (
-                <div className="px-3 py-1.5 bg-amber-500 text-black text-[10px] font-black uppercase rounded-lg border border-amber-400 shadow-lg shadow-amber-500/20 flex items-center gap-2">
-                  <Brain className="w-3.5 h-3.5" /> Concentration
-                </div>
-              )}
-              {activeEntity.conditions.map(c => (
-                <div key={c} className="px-3 py-1.5 glass-dark text-slate-300 text-[10px] font-black uppercase rounded-lg border border-white/5 shadow-sm">
-                  {c}
-                </div>
-              ))}
-              {activeEntity.conditions.length === 0 && !activeEntity.concentration && (
-                <span className="text-[10px] text-slate-600 font-bold italic">No active conditions</span>
-              )}
-            </div>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {/* Left Column: Status & Resources */}
+        <div className="space-y-8">
+          <section className="space-y-4">
+             <EntityConditions 
+               entity={activeEntity}
+               updateEntity={(updates) => updateEntity(activeEntity.id, updates)}
+             />
+          </section>
 
-          {/* Legendary Hub */}
           {(activeEntity.legendaryActionsMax > 0 || activeEntity.legendaryResistancesMax > 0) && (
-            <div className="grid grid-cols-2 gap-4 p-5 glass-dark rounded-3xl border border-white/5">
-              {activeEntity.legendaryActionsMax > 0 && (
-                <div className="space-y-3">
-                  <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest block">Actions</span>
-                  <div className="flex gap-2">
-                    {Array.from({ length: activeEntity.legendaryActionsMax }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => i < activeEntity.legendaryActions && spendLegendaryAction(activeEntity.id)}
-                        className={cn(
-                          "w-3.5 h-3.5 rounded-full border-2 transition-all duration-300",
-                          i < activeEntity.legendaryActions 
-                            ? "bg-indigo-500 border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
-                            : "bg-black/40 border-white/10 opacity-20"
-                        )}
-                      />
-                    ))}
+            <section className="p-6 glass-dark rounded-[2rem] border border-white/10 shadow-xl space-y-6">
+              <header className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <h4 className="text-[10px] font-black text-amber-500/60 uppercase tracking-[0.2em]">Legendary Resonance</h4>
+              </header>
+              <div className="grid grid-cols-2 gap-8">
+                {activeEntity.legendaryActionsMax > 0 && (
+                  <div className="space-y-4">
+                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Actions</span>
+                    <div className="flex gap-2.5">
+                      {Array.from({ length: activeEntity.legendaryActionsMax }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => i < activeEntity.legendaryActions && spendLegendaryAction(activeEntity.id)}
+                          className={cn(
+                            "w-4 h-4 rounded-full border-2 transition-all duration-500",
+                            i < activeEntity.legendaryActions 
+                              ? "bg-indigo-500 border-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.6)]" 
+                              : "bg-black/40 border-white/10 opacity-10"
+                          )}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              {activeEntity.legendaryResistancesMax > 0 && (
-                <div className="space-y-3 border-l border-white/5 pl-4">
-                  <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest block">Resistances</span>
-                  <div className="flex gap-2">
-                    {Array.from({ length: activeEntity.legendaryResistancesMax }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => i < activeEntity.legendaryResistances && spendLegendaryResistance(activeEntity.id)}
-                        className={cn(
-                          "w-3.5 h-3.5 rounded border-2 rotate-45 transition-all duration-300",
-                          i < activeEntity.legendaryResistances 
-                            ? "bg-rose-500 border-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.5)]" 
-                            : "bg-black/40 border-white/10 opacity-20"
-                        )}
-                      />
-                    ))}
+                )}
+                {activeEntity.legendaryResistancesMax > 0 && (
+                  <div className="space-y-4 border-l border-white/5 pl-8">
+                    <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Resistances</span>
+                    <div className="flex gap-2.5">
+                      {Array.from({ length: activeEntity.legendaryResistancesMax }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => i < activeEntity.legendaryResistances && spendLegendaryResistance(activeEntity.id)}
+                          className={cn(
+                            "w-4 h-4 rounded border-2 rotate-45 transition-all duration-500",
+                            i < activeEntity.legendaryResistances 
+                              ? "bg-rose-500 border-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.6)]" 
+                              : "bg-black/40 border-white/10 opacity-10"
+                          )}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </section>
           )}
         </div>
 
-        {/* Tactical Actions */}
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Combat Actions</h4>
-            </div>
-            <div className="flex items-center gap-2 p-1 glass-dark rounded-2xl border border-white/5">
-              <input 
-                type="number"
-                placeholder="0"
-                value={dmgInput}
-                onChange={(e) => setDmgInput(e.target.value)}
-                className="w-16 h-12 bg-transparent text-center font-mono font-bold text-xl outline-none placeholder:text-slate-800"
-              />
-              <div className="h-8 w-px bg-white/5 mx-2" />
-              <select 
-                value={dmgType}
-                onChange={(e) => setDmgType(e.target.value)}
-                className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-              >
-                {DAMAGE_TYPES.map(t => <option key={t} value={t} className="bg-slate-900">{t}</option>)}
-              </select>
-              <div className="flex gap-2 ml-auto p-1">
-                <button 
-                  onClick={handleApplyDamage}
-                  className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-rose-500/20"
+        {/* Right Column: Tactical Console */}
+        <div className="space-y-8">
+           <section className="space-y-4">
+             <header className="flex items-center gap-2 px-1">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Tactical Interface</h4>
+             </header>
+             <div className="flex items-center gap-3 p-2 glass-dark rounded-[1.5rem] border border-white/10 shadow-inner">
+                {activeEntity.groupId && (
+                  <button 
+                    onClick={() => setUseGroup(!useGroup)}
+                    className={cn(
+                      "p-3.5 rounded-xl transition-all border",
+                      useGroup ? "bg-indigo-600 border-indigo-400 text-white shadow-lg" : "bg-white/5 border-transparent text-slate-600"
+                    )}
+                    title="Target Group"
+                  >
+                    <Users className="w-5 h-5" />
+                  </button>
+                )}
+                <input 
+                  type="number"
+                  placeholder="0"
+                  value={dmgInput}
+                  onChange={(e) => setDmgInput(e.target.value)}
+                  className="w-20 h-14 bg-transparent text-center font-mono font-black text-2xl outline-none placeholder:text-slate-800"
+                />
+                <div className="h-10 w-px bg-white/5" />
+                <select 
+                  value={dmgType}
+                  onChange={(e) => setDmgType(e.target.value)}
+                  className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none text-slate-500 hover:text-slate-200 transition-colors cursor-pointer"
                 >
-                  <Minus className="w-4 h-4" /> Dmg
-                </button>
-                <button 
-                  onClick={handleApplyHealing}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-emerald-500/20"
-                >
-                  <Plus className="w-4 h-4" /> Heal
-                </button>
-              </div>
-            </div>
-          </div>
+                  {DAMAGE_TYPES.map(t => <option key={t} value={t} className="bg-slate-900">{t}</option>)}
+                </select>
+                <div className="flex gap-2 ml-auto">
+                  <button 
+                    onClick={handleApplyDamage}
+                    className="flex flex-col items-center justify-center w-16 h-14 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-2xl transition-all border border-rose-500/20 active:scale-90"
+                  >
+                    <Minus className="w-4 h-4 mb-1" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Dmg</span>
+                  </button>
+                  <button 
+                    onClick={handleApplyHealing}
+                    className="flex flex-col items-center justify-center w-16 h-14 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-2xl transition-all border border-emerald-500/20 active:scale-90"
+                  >
+                    <Plus className="w-4 h-4 mb-1" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Heal</span>
+                  </button>
+                </div>
+             </div>
+           </section>
 
-          <button 
+           <button 
             onClick={() => advanceTurn(1)}
-            className="w-full flex items-center justify-between p-5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-2xl shadow-xl shadow-indigo-600/20 transition-all active:scale-[0.98] group"
+            className="w-full flex items-center justify-between p-6 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-[1.5rem] shadow-2xl shadow-indigo-600/30 transition-all active:scale-[0.98] group relative overflow-hidden"
           >
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-white/10 rounded-lg">
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-20 transition-opacity" />
+            <div className="flex items-center gap-5 relative z-10">
+              <div className="p-2.5 bg-white/10 rounded-xl">
+                <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-300" />
               </div>
-              <span className="text-xs font-black uppercase tracking-[0.2em]">End {activeEntity.name}'s Turn</span>
+              <div className="flex flex-col items-start">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Finalize Action</span>
+                <span className="text-sm font-black uppercase tracking-wider italic text-indigo-50">End {activeEntity.name}'s Sequence</span>
+              </div>
             </div>
-            <span className="text-[10px] font-black opacity-40 uppercase tracking-widest">Spacebar</span>
+            <div className="px-3 py-1.5 bg-black/20 rounded-lg text-[9px] font-black opacity-60 uppercase tracking-widest border border-white/5">
+              Spacebar
+            </div>
           </button>
         </div>
       </div>
     </motion.div>
+  );
+};
+
+const StatBlock = ({ label, value, color }) => {
+  const colors = {
+    indigo: "text-indigo-400 bg-indigo-500/5 border-indigo-500/20",
+    emerald: "text-emerald-400 bg-emerald-500/5 border-emerald-500/20",
+    rose: "text-rose-400 bg-rose-500/5 border-rose-500/20"
+  };
+
+  return (
+    <div className={cn("flex flex-col items-center px-5 py-3 glass-dark rounded-2xl border min-w-[80px]", colors[color])}>
+      <span className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-60">{label}</span>
+      <span className="text-2xl font-mono font-black">{value}</span>
+    </div>
   );
 };
 
