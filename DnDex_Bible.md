@@ -1554,3 +1554,51 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` None.
 - `State After Completion:` Floating panel recovery is now keyboard-reachable with discrete, labeled controls.
 - `Next Step / Handoff:` Implement Phase 5 deterministic offscreen panel recovery after viewport changes.
+
+### Entry 51 - Phase 5 Deterministic Offscreen Panel Recovery (2026-04-30)
+- `Summary:` Added pure panel-bounds helper, viewport resize clamping for floating panels, and helper tests; hardened smoke script selectors for deterministic recovery checks.
+- `Reason / Intent:` Ensure floating panels cannot become permanently unreachable after viewport changes and keep recovery controls reliable under headless automation.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterLayout.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/DockablePanel.jsx`
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`
+  - `/Users/andrew/Projects/DM_Hub/src/components/SnapshotDrawer.jsx`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterLayout.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/panelBounds.js` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/panelBounds.test.js` (new)
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+sed -n '1,320p' src/components/SnapshotDrawer.jsx
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Implement deterministic clamp/recovery behavior and validate viewport resilience via build/tests/lint/smoke.
+- `Outputs Generated:`
+  - `Fact:` Added pure helper `clampPanelBounds(panel, viewport, minimumVisible)` with shared preset sizing in `/Users/andrew/Projects/DM_Hub/src/components/workspace/panelBounds.js`.
+  - `Fact:` `BattlemasterLayout` now clamps floating panel bounds in `updatePanel` and on `window.resize` via a dedicated effect.
+  - `Fact:` Added test coverage for panel bounds helper in `/Users/andrew/Projects/DM_Hub/src/components/workspace/panelBounds.test.js`.
+  - `Fact:` Vitest suite expanded from `16` to `19` passing tests due to new helper tests.
+  - `Fact:` Smoke script selector hardening:
+    - snapshots drawer assertion now targets `aside:has-text("Chronological Archives") input[placeholder="Snapshot label..."]`.
+    - panel restore click now checks visibility before clicking and reports a structured failure instead of timeout throw.
+  - `Fact:` Validation results (final rerun after smoke-script hardening):
+    - `npm run build`: PASS
+    - `npx vitest run`: PASS (`19/19`)
+    - `npm run lint`: PASS with warnings only (`0 errors, 2 warnings`)
+    - `node scripts/smoke/battlemaster-dockable.mjs`: PASS (`Smoke pass: 20 checks`)
+- `Decisions:`
+  - `Fact:` Kept recovery behavior local to workspace UI state; no encounter/map/history mutation semantics changed.
+  - `Fact:` Did not add recovery toast to avoid noisy repeated notifications during viewport resizing.
+- `Bugs / Blockers:`
+  - `Fact:` Intermediate smoke failures (`snapshots opens`, restore click timeout) were due to brittle selectors/timing assumptions and were corrected in script-level assertions.
+- `Correction:`
+  - `Fact:` Smoke script is now deterministic for snapshot and panel restore checks under headless execution.
+- `State After Completion:` Floating panels are automatically clamped after viewport changes and recoverable via existing controls.
+- `Next Step / Handoff:` Execute Phase 6 full feature representation audit and patch only small safe access gaps if found.

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import MapDisplay from './MapDisplay';
 import NowActingPanel from './NowActingPanel';
 import InitiativeLedger from './InitiativeLedger';
@@ -8,6 +8,7 @@ import DockableWorkspace from './workspace/DockableWorkspace';
 import DockablePanel from './workspace/DockablePanel';
 import BattlemasterContextDock from './BattlemasterContextDock';
 import { useWorkspace } from './workspace/workspaceContext';
+import { clampPanelBounds, getPresetPanelSize } from './workspace/panelBounds';
 
 const defaultPanels = () => ({
   left: { id: 'left', title: 'Combat', docked: true, collapsed: false, minimized: false, width: 340, height: 420, left: 80, top: 120, z: 20 },
@@ -16,11 +17,6 @@ const defaultPanels = () => ({
 });
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const PANEL_PRESETS = {
-  compact: { width: 280, height: 220 },
-  standard: { width: 360, height: 320 },
-  large: { width: 460, height: 430 }
-};
 
 const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRules, toggleSnapshots }) => {
   const [panels, setPanels] = useState(defaultPanels);
@@ -50,13 +46,8 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
     setPanels((prev) => {
       const current = prev[id];
       if (!current) return prev;
-      const next = { ...current, ...patch };
-      if (!next.docked) {
-        const maxLeft = Math.max(16, window.innerWidth - next.width - 16);
-        const maxTop = Math.max(48, window.innerHeight - next.height - 16);
-        next.left = clamp(next.left, 16, maxLeft);
-        next.top = clamp(next.top, 48, maxTop);
-      }
+      let next = { ...current, ...patch };
+      next = clampPanelBounds(next, { width: window.innerWidth, height: window.innerHeight });
       return { ...prev, [id]: next };
     });
   };
@@ -105,8 +96,7 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
 
   const applyPresetSize = (id, preset) => {
     if (layoutLocked) return;
-    const size = PANEL_PRESETS[preset];
-    if (!size) return;
+    const size = getPresetPanelSize(preset);
     updatePanel(id, { width: size.width, height: size.height, collapsed: false, minimized: false });
   };
 
@@ -141,6 +131,27 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
     setRightWidth(380);
     setBottomHeight(230);
   };
+
+  useEffect(() => {
+    const onResize = () => {
+      setPanels((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        Object.values(prev).forEach((panel) => {
+          if (panel.docked || panel.minimized) return;
+          const clamped = clampPanelBounds(panel, { width: window.innerWidth, height: window.innerHeight });
+          if (clamped.left !== panel.left || clamped.top !== panel.top || clamped.width !== panel.width || clamped.height !== panel.height) {
+            next[panel.id] = clamped;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    };
+
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const startResize = (kind, event) => {
     if (layoutLocked) return;

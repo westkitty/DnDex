@@ -119,9 +119,15 @@ const runSmoke = async () => {
     ok('panel drag works', Boolean(dragStart && dragEnd && Math.abs(dragEnd.x - dragStart.x) > 30));
 
     await floatingLeft.getByTitle('Minimize Panel').click({ force: true });
-    await page.getByRole('button', { name: 'Restore Panel' }).first().click({ force: true });
-    await page.locator('section[aria-label="Combat"]').last().getByTitle('Redock Panel').click({ force: true });
-    ok('panel minimize restore redock works', true);
+    const restoreButton = page.getByRole('button', { name: 'Restore Panel' }).first();
+    const canRestore = await restoreButton.isVisible().catch(() => false);
+    if (canRestore) {
+      await restoreButton.click({ force: true });
+      await page.locator('section[aria-label="Combat"]').last().getByTitle('Redock Panel').click({ force: true });
+      ok('panel minimize restore redock works', true);
+    } else {
+      ok('panel minimize restore redock works', false, 'Restore Panel button not visible after minimizing panel.');
+    }
 
     await page.getByLabel('Theme').selectOption('terminal');
     ok(
@@ -140,7 +146,10 @@ const runSmoke = async () => {
     await page.keyboard.press('Escape');
 
     await page.getByTitle('Snapshots').click();
-    const snapshotOpen = await page.locator('input[placeholder="Snapshot label..."]').isVisible().catch(() => false);
+    const snapshotOpen = await page
+      .locator('aside:has-text("Chronological Archives") input[placeholder="Snapshot label..."]')
+      .isVisible()
+      .catch(() => false);
     ok('snapshots opens', snapshotOpen);
     await page.keyboard.press('Escape');
 
