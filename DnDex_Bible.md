@@ -353,7 +353,7 @@ npm run build
 ```bash
 npx vitest run
 ```
-- Result: **16/16 passed** (Last verified 2026-04-30).
+- Result: **19/19 passed** (Last verified 2026-04-30).
 - Source: `src/hooks/useEncounterState.test.js`.
 - Coverage: entity CRUD, damage/healing, concentration alert generation, turn advancement, undo/redo, all map history actions (commitTerrain, commitDrawing, clearMapDrawing, placeObject, clearMap).
 
@@ -361,7 +361,14 @@ npx vitest run
 ```bash
 npm run lint
 ```
-- Result: **12 errors, 4 warnings** (Last verified 2026-04-30). 4 warnings are `react-hooks/exhaustive-deps` non-critical. 12 errors are pre-existing from earlier sessions. `motion` false positives suppressed via `varsIgnorePattern` in `eslint.config.js`.
+- Result: **0 errors, 2 warnings** (Last verified 2026-04-30). The remaining warnings are both `react-hooks/exhaustive-deps` and are tracked as known non-blockers.
+
+### Headless Smoke
+```bash
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- Result: **PASS — 20 checks** (Last verified 2026-04-30).
+- Script path: `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`.
 
 ## Dependency and Import Map
 
@@ -408,10 +415,12 @@ npm run lint
 - **Severity**: Low. Background image persists correctly (stored in state). Only per-tile custom overrides are ephemeral.
 - **Suggested next step**: Store custom tiles in `map.config.customAssets` alongside the background.
 
-### [KNOWN] Lint: 12 errors, 4 warnings
+### [KNOWN] Lint: 0 errors, 2 warnings
 - **Evidence**: `npm run lint` output (2026-04-30).
-- **Severity**: Low. No functional impact. 4 warnings are `react-hooks/exhaustive-deps` in `useEncounterState.js` (intentional stable-ref patterns).
-- **Note**: `motion` false positives from Framer Motion are suppressed via `varsIgnorePattern` in `eslint.config.js`.
+- **Severity**: Low. No functional impact.
+- **Warning 1**: `src/components/MapDisplay.jsx` `react-hooks/exhaustive-deps` (missing `viewOffset.x`, `viewOffset.y`, `zoom` in effect dependency array).
+- **Warning 2**: `src/hooks/useEncounterState.js` `react-hooks/exhaustive-deps` (missing `state` dependency).
+- **Note**: `motion` false positives from Framer Motion remain suppressed via `varsIgnorePattern` in `eslint.config.js`.
 
 ### [KNOWN] Large bundle warning
 - **Evidence**: Vite warns on `index.js` > 500 kB (actual: ~1921 kB / 392 kB gzip).
@@ -454,13 +463,14 @@ npm run lint
 ## Current State Summary
 DnDex / DM Hub is a production-quality, feature-complete D&D 5e encounter manager. As of 2026-04-30:
 
-- **State machine**: Stable. 16/16 tests passing. Full undo/redo stack, IndexedDB persistence, multi-tab BroadcastChannel sync.
+- **State machine**: Stable. 19/19 tests passing. Full undo/redo stack, IndexedDB persistence, multi-tab BroadcastChannel sync.
 - **Combat engine**: Complete. Concentration saves, legendary actions/resistances, group damage, turn auto-advance, lair actions.
 - **Tactical map**: Complete. All layers (background image, terrain, objects, sketches, fog, tokens) are history-aware and undoable. Battle map background image upload fully implemented.
 - **Battlemaster layout**: Complete. Three-panel resizable/collapsible dashboard view purpose-built for live play.
 - **Bestiary**: Complete. 334 SRD monsters, searchable, deployable.
 - **Snapshots / Export / Import**: Complete.
-- **Known non-blockers**: 12 lint errors (no functional impact), large bundle (PWA cached), custom tile uploads are session-only.
+- **Headless smoke**: Committed script (`scripts/smoke/battlemaster-dockable.mjs`) passes 20 checks.
+- **Known non-blockers**: 2 lint warnings (`react-hooks/exhaustive-deps`), MapDisplay monolith, large bundle (PWA cached), custom tile uploads are session-only, optional visual verification of removed EntityCard damage-flash behavior.
 - **No known blockers or crashes.**
 
 The codebase is ready to extend. The next natural improvements are MapDisplay refactor (extract palette/token), custom tile persistence, and bundle code splitting.
@@ -1709,3 +1719,55 @@ git rev-parse origin/main
   - `Fact:` None.
 - `State After Completion:` Hardening continuation fully committed and pushed with remote parity verified.
 - `Next Step / Handoff:` Optional next pass can target low-risk UX polish and documented lint-warning investigation only if explicitly requested.
+
+### Entry 55 - Post-Hardening Reconciliation Pass (2026-04-30)
+- `Summary:` Reconciled post-hardening documentation drift, verified true pushed git state, and added explicit Undo/Redo accessibility labels.
+- `Reason / Intent:` Close inconsistencies between chat metadata and Bible stable sections without changing feature architecture.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/docs/ui-ux/BATTLEMASTER_FEATURE_REPRESENTATION_AUDIT.md`
+  - `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/docs/ui-ux/BATTLEMASTER_FEATURE_REPRESENTATION_AUDIT.md`
+  - `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git log --oneline -12
+git rev-parse HEAD
+git rev-parse origin/main
+git remote -v
+rg -n "16/16|12 errors|4 warnings|Smoke|battlemaster-dockable.mjs|75f9b88|Known non-blockers|Risks|Current State Summary|Future Work|Open Questions|Setup|Test Results|Lint" DnDex_Bible.md
+sed -n '320,760p' DnDex_Bible.md
+sed -n '1,320p' src/components/TopBar.jsx
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Verify true repo state, reconcile stale stable docs, and validate no regression.
+- `Outputs Generated:`
+  - `Fact:` True current pushed commit before edits was `aacf477e3e371052405213f2ea6e8f600e5d5faa` with `HEAD == origin/main`.
+  - `Fact:` Updated stable Bible sections to match latest ledger facts:
+    - Vitest now recorded as `19/19`.
+    - Lint now recorded as `0 errors, 2 warnings`.
+    - Added headless smoke section with committed script path `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs` and `20` checks pass.
+    - Current state summary and known non-blockers now reflect latest validated state.
+  - `Fact:` Added explicit `aria-label` and `title` for Undo/Redo buttons in `TopBar.jsx` with no behavior change.
+  - `Fact:` Updated feature representation audit Undo/Redo status from `Needs improvement` to `OK` with explicit label coverage note.
+  - `Fact:` Validation results:
+    - `npm run build`: PASS
+    - `npx vitest run`: PASS (`19/19`)
+    - `npm run lint`: PASS with warnings only (`0 errors, 2 warnings`)
+    - `node scripts/smoke/battlemaster-dockable.mjs`: PASS (`Smoke pass: 20 checks`)
+- `Decisions:`
+  - `Fact:` No architecture or map-engine refactor performed.
+  - `Fact:` Changes limited to documentation reconciliation plus minimal accessibility labels.
+- `Bugs / Blockers:`
+  - `Fact:` No blocker found.
+- `Correction:`
+  - `Fact:` Metadata drift corrected: stable Bible sections now align with modern ledger state and latest verified hash context.
+- `State After Completion:` Reconciliation pass complete; docs and small accessibility gap resolved.
+- `Next Step / Handoff:` Optional follow-up is only the two known `react-hooks/exhaustive-deps` warning investigations if explicitly requested.

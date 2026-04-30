@@ -11,7 +11,7 @@ Repository: `/Users/andrew/Projects/DM_Hub`
 | Control | Visible Label/Title | Component/File | Action/Function | Combat Mode | Prep Mode | Accessibility Note | Risk if Hidden | Status |
 |---|---|---|---|---|---|---|---|---|
 | Next Action / advance turn | `Next Action` | `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx`, `/Users/andrew/Projects/DM_Hub/src/components/NowActingPanel.jsx` | `encounter.advanceTurn(1)` | Visible | Visible | Button label visible | High (turn flow blocked) | OK |
-| Undo / redo | icon buttons (undo/redo), toast history copy | `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx` | `encounter.undo()`, `encounter.redo()` | Visible | Visible | Icon-only with affordance via position; should keep titles | High (history recovery lost) | Needs improvement |
+| Undo / redo | icon buttons (undo/redo), toast history copy | `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx` | `encounter.undo()`, `encounter.redo()` | Visible | Visible | Explicit `title` and `aria-label` coverage verified (`Undo`, `Redo`) | High (history recovery lost) | OK |
 | Active damage/heal | Quick Strike + entity HP controls | `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterQuickActions.jsx`, `/Users/andrew/Projects/DM_Hub/src/components/entity-card/EntityHP.jsx` | `encounter.applyDamage`, `encounter.applyHealing` | Visible (active entity) | Reachable | Inputs/buttons | High | OK |
 | Concentration alert resolution | Tactical alerts actions | `/Users/andrew/Projects/DM_Hub/src/components/TacticalAlertStack.jsx`, `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx` | `resolveConcentration`, `clearAlert` | Visible | Visible | Action buttons in alert stack | High | OK |
 | Initiative ordering | Initiative panel | `/Users/andrew/Projects/DM_Hub/src/components/InitiativeLedger.jsx` | reorder + encounter updates | Visible | Visible | List interactions | High | OK |
@@ -48,7 +48,7 @@ Repository: `/Users/andrew/Projects/DM_Hub`
 ## Findings
 - `Fact:` All required major combat/prep/map/layout controls remain represented somewhere in the Battlemaster UI.
 - `Fact:` Layout controls remain UI-only and separate from encounter history actions.
-- `Inferred:` Undo/redo icon buttons should keep explicit `title`/`aria-label` coverage in future pass to reduce discoverability risk.
+- `Fact:` Undo/redo icon buttons include explicit `title`/`aria-label` coverage (`Undo`, `Redo`).
 - `Unknown:` Dedicated Notes editing panel is not implemented in this pass; current dock tile is informational.
 
 ## Small Safe Fixes Applied During Audit

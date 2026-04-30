@@ -145,6 +145,8 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
               const note = undo();
               if (note) showToast(`Reverted: ${note}`, 'history');
             }} 
+            aria-label="Undo"
+            title="Undo"
             disabled={!canUndo} 
             className="p-2 hover:bg-white/5 disabled:opacity-20 text-slate-500 transition-colors"
           >
@@ -155,6 +157,8 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
               const note = redo();
               if (note) showToast(`Restored: ${note}`, 'history');
             }} 
+            aria-label="Redo"
+            title="Redo"
             disabled={!canRedo} 
             className="p-2 hover:bg-white/5 disabled:opacity-20 text-slate-500 transition-colors"
           >
