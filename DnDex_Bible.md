@@ -1417,3 +1417,51 @@ npm run lint
   - `Fact:` Prior lint baseline in Entry 46 is now superseded by this `0 errors` state.
 - `State After Completion:` Lint errors resolved without architecture changes to encounter state flow.
 - `Next Step / Handoff:` Start Phase 2 command palette runtime + smoke stabilization and move smoke script into repository.
+
+### Entry 48 - Phase 2 Command Palette Shortcut Hardening + Smoke Script Stabilization (2026-04-30)
+- `Summary:` Hardened global command-palette shortcut target filtering in `App.jsx` and created a committed deterministic headless smoke script under repository `scripts/smoke/`.
+- `Reason / Intent:` Complete Phase 2 so command palette activation is reliable and non-intrusive during typing/editing while moving smoke coverage out of `/tmp`.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/CommandPalette.jsx`
+  - `/tmp/dndex-smoke/battlemaster-dockable.mjs`
+  - `/Users/andrew/Projects/DM_Hub/package.json`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs` (new)
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git log --oneline -8
+npm run lint
+sed -n '1,260p' src/App.jsx
+sed -n '1,260p' src/components/CommandPalette.jsx
+ls -la /tmp/dndex-smoke || true
+test -f /tmp/dndex-smoke/battlemaster-dockable.mjs && sed -n '1,320p' /tmp/dndex-smoke/battlemaster-dockable.mjs || true
+mkdir -p scripts/smoke
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Verify current shortcut behavior, implement guarded shortcut handling, commit reproducible smoke flow in-repo, and validate build/test/lint/smoke.
+- `Outputs Generated:`
+  - `Fact:` `App.jsx` shortcut now ignores editable targets via event-target checks for `input`, `textarea`, `select`, and contenteditable containers/descendants.
+  - `Fact:` Command palette opening still uses `setActiveModal(UI_MODALS.COMMAND)` in `App.jsx` modal FSM ownership.
+  - `Fact:` New smoke script launches `vite preview` headlessly, runs Playwright assertions, captures console/page errors, writes results to `/tmp/dndex-smoke/battlemaster-dockable-results.json`, and exits nonzero on failure.
+  - `Fact:` Validation results:
+    - `npm run build`: PASS
+    - `npx vitest run`: PASS (`16/16`)
+    - `npm run lint`: PASS with warnings only (`0 errors, 2 warnings`)
+    - `node scripts/smoke/battlemaster-dockable.mjs`: PASS (`Smoke pass: 20 checks`)
+- `Decisions:`
+  - `Fact:` Deterministic shortcut smoke uses dispatched keyboard events from page context with fallback from `Meta+K` to `Control+K` for headless reliability.
+  - `Fact:` Shortcut `preventDefault` is only executed when shortcut conditions are met and target is non-editable.
+- `Bugs / Blockers:`
+  - `Fact:` No Phase 2 blockers.
+- `Correction:`
+  - `Fact:` Repository now contains committed smoke script path; it is no longer `/tmp`-only.
+- `State After Completion:` Phase 2 functional goals completed and validated.
+- `Next Step / Handoff:` Start Phase 3 to align `BattlemasterContextDock` upload/import toast and error UX with `TopBar` import flow.

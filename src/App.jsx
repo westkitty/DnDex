@@ -115,12 +115,14 @@ function AppContent() {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ignore when focused on an input/textarea/select to avoid interfering with typing
-      const tag = document.activeElement?.tagName;
-      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      const eventTarget = e.target instanceof Element ? e.target : null;
+      const editableContainer = eventTarget?.closest?.(
+        'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]'
+      );
+      const isEditableTarget = Boolean(editableContainer) || Boolean(eventTarget?.isContentEditable);
 
       // CMD/CTRL + K: Command Palette
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey) && !isEditableTarget) {
         e.preventDefault();
         setActiveModal(prev => prev === UI_MODALS.COMMAND ? UI_MODALS.NONE : UI_MODALS.COMMAND);
       }
@@ -129,7 +131,7 @@ function AppContent() {
         setActiveModal(UI_MODALS.NONE);
       }
       // B01 FIX: Space → Advance Turn (matches hint badge in NowActingPanel)
-      if (e.key === ' ' && !isTyping && activeModal === UI_MODALS.NONE) {
+      if (e.key === ' ' && !isEditableTarget && activeModal === UI_MODALS.NONE) {
         e.preventDefault();
         encounter.advanceTurn(1);
       }
