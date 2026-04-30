@@ -636,7 +636,8 @@ const Token = ({ entity, pos, onMove, isDraggable, isActive, zoom = 1, viewOffse
   const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
-  const isBloodied = entity.hp <= entity.maxHp / 2;
+  const hpPct = entity.maxHp > 0 ? entity.hp / entity.maxHp : 0;
+  const isBloodied = hpPct <= 0.5;
   const isDead = entity.hp <= 0;
 
   const handleMouseDown = (e) => {
@@ -718,6 +719,19 @@ const Token = ({ entity, pos, onMove, isDraggable, isActive, zoom = 1, viewOffse
         {entity.name.substring(0, 2)}
       </span>
       
+      {/* Persistent HP bar — always visible, 3px strip below token */}
+      {!isDead && entity.maxHp > 0 && (
+        <div className="absolute left-[8%] right-[8%] bottom-[-5px] h-[3px] bg-black/70 rounded-full overflow-hidden pointer-events-none">
+          <div
+            className={cn(
+              'h-full rounded-full transition-all duration-300',
+              hpPct > 0.5 ? 'bg-emerald-500' : hpPct > 0.25 ? 'bg-amber-500' : 'bg-rose-500'
+            )}
+            style={{ width: `${Math.max(4, hpPct * 100)}%` }}
+          />
+        </div>
+      )}
+
       {/* Interactive HUD on hover */}
       <div className="absolute -top-12 left-1/2 -translate-x-1/2 glass-dark px-3 py-1.5 rounded-xl text-[9px] font-black whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 scale-90 group-hover:scale-100 border border-white/10 shadow-2xl z-[60]">
         <div className="flex flex-col items-center gap-0.5">

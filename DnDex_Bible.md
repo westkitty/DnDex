@@ -988,3 +988,34 @@ The project is a high-fidelity, feature-rich D&D manager. The state machine is r
   - No console or page errors ✓
 - `State After Completion:` Build passes (1912 kB). Three-view navigation fully operational: List / Tactical Map / Battlemaster.
 - `Next Step / Handoff:` Consider resizable panel handles (drag-to-resize), HP overlay bars on map tokens, or adding DamageCalculator to the left panel for quick damage application without opening GroupDamageSheet.
+
+### Entry 38 - Session Start: Battlemaster Mechanical Adaptability Pass (2026-04-30)
+- `Summary:` Session started to make Battlemaster layout mechanically adaptable and combat-useful. Files inspected before any changes made.
+- `Reason / Intent:` Entry 37 delivered structural Battlemaster layout. This session adds: (1) responsive/adaptive panel widths, (2) drag-to-resize handles, (3) token HP bar overlay, (4) quick combat controls in left panel.
+- `Files Inspected:` `src/components/BattlemasterLayout.jsx`, `src/components/MapDisplay.jsx` (token rendering lines 635–733), `src/components/NowActingPanel.jsx`, `src/hooks/useEncounterState.js` (applyDamage/applyHealing signatures)
+- `Facts Confirmed:`
+  - `Fact:` Tokens are DOM elements (not canvas draws). `Token` component at MapDisplay.jsx:635.
+  - `Fact:` Token already computes `isBloodied` and `isDead`. Hover HUD shows HP. No persistent always-visible HP bar exists yet.
+  - `Fact:` GRID_SIZE = 50px. Token rendered as `GRID_SIZE - 4 = 46px` circle.
+  - `Fact:` `applyDamage(id, amount, type, toGroup=false)` — needs entity id, numeric amount, damage type string.
+  - `Fact:` `applyHealing(id, amount, toGroup=false)` — needs entity id, numeric amount.
+  - `Fact:` NowActingPanel has its own damage/heal controls with type selector and group toggle. QuickActions will be supplementary (no type selector, just fast chips).
+  - `Fact:` Current `BattlemasterLayout.jsx` uses fixed `PANEL_W = 308`. No responsive breakpoints. No resize handles.
+- `State After Completion:` File inspection complete. Ready to implement.
+- `Next Step / Handoff:` Implement all four objectives then validate.
+
+### Entry 39 - Battlemaster Mechanical Adaptability: All Objectives Complete (2026-04-30)
+- `Summary:` All five mechanical objectives delivered: adaptive panel widths, drag-to-resize handles, persistent token HP bars, quick combat controls, and full smoke test coverage.
+- `Reason / Intent:` Make Battlemaster view combat-useful and screen-adaptive, not just structurally sound.
+- `Files Changed:` `src/components/BattlemasterLayout.jsx` (rewritten), `src/components/BattlemasterQuickActions.jsx` (new), `src/components/MapDisplay.jsx` (Token HP bar)
+- `Architecture Decisions:`
+  - **Objective 1 — Adaptive widths:** `computeInitialPanelWidth()` returns `clamp(floor(vw * 0.22), 240, 420)`. Left and right panels start with independent width state from this computed value. Auto-collapse on mount: `leftOpen = vw >= 700`, `rightOpen = vw >= 900`. After mount, user choices are respected.
+  - **Objective 2 — Drag-to-resize:** Single `dragging` ref (`null | 'left' | 'right'`) + global `mousemove`/`mouseup` listeners wired in a single `useEffect`. `dragStartX`/`dragStartW` refs avoid stale closures. `document.body.style.cursor = 'col-resize'` during drag. `isResizing` state switches panel transition to `{ duration: 0 }` during drag (eliminates spring lag). Width clamped `[240, 420]`. Resize handles are 5px hit-zone divs with 1px visible stripe.
+  - **Objective 3 — Token HP bar:** Added `hpPct = entity.hp / entity.maxHp` to Token component. Persistent 3px bar at `bottom-[-5px]`, width = `max(4%, hpPct * 100%)`. Colors: emerald >50%, amber >25%, rose ≤25%. Hidden when dead. Both Battlemaster and standalone Map views benefit.
+  - **Objective 4 — Quick Strike panel:** New `BattlemasterQuickActions.jsx`. Quick chips [5, 10, 15, 20] pre-fill amount. Custom number input. Damage (rose) and Heal (emerald) buttons call `applyDamage(id, val, 'Untyped')` and `applyHealing(id, val)`. Returns null when no activeEntity. Pinned at bottom of left panel, above scroll area.
+  - **Objective 5 — Smoke test:** Rewrote `/tmp/dndex-smoke/battlemaster-v2.mjs`. Fixed false-alarm pattern from v1: collapse checks now verify presence/absence of specific `title` attributes, not text content (text persists as vertical label in collapsed state). 16 checks covering app load, all three views, collapse/expand for both panels, canvas persistence, QuickActions null-safety, navigation.
+- `Lint:` No new lint errors from these changes. Pre-existing 4 errors unchanged.
+- `Build:` Passes. 1912 kB (unchanged — no new deps).
+- `Test Results:` Vitest 16/16. Smoke test 16/16 pass.
+- `State After Completion:` Battlemaster layout is mechanically complete. All combat-facing features work.
+- `Next Step / Handoff:` Final UI polish pass (typography, spacing, glass depth). Or: Fog of War reveal mechanic. Or: bundle code splitting.
