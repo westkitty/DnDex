@@ -9,7 +9,7 @@ vi.mock('idb-keyval', () => ({
   set: vi.fn(() => Promise.resolve()),
 }));
 
-describe('DM Hub State Machine Harness', () => {
+describe('DnDex State Machine Harness', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

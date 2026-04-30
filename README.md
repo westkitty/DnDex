@@ -1,4 +1,4 @@
-# DM Hub (DnDex) 🐉
+# DnDex — Encounter Command Center 🐉
 
 A high-performance, tactical D&D 5e encounter management tool designed for Dungeon Masters. Featuring real-time state synchronization, a full SRD bestiary, and automated combat mechanics.
 
@@ -48,4 +48,4 @@ For a deep dive into the architecture, state model, and development history, see
    ```
 
 ---
-Built with ⚔️ by Antigravity for the DM Hub community.
+Built with ⚔️ by Antigravity for the DnDex community.

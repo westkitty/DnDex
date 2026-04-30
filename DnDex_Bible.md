@@ -16,8 +16,16 @@
 9. **Use Exact Paths.** Refer to files by their full path in the repository.
 10. **Avoid Vague Scopes.** Keep changes focused and grounded in specific user workflows for Dungeon Masters.
 
+## Naming Policy
+
+- **Primary product title:** `DnDex`
+- **Subtitle / system label:** `DM_Hub`
+- User-facing copy, documentation, and new code should use `DnDex` as the title and `DM_Hub` as the subtitle/system label.
+- Do not use `DM Hub` or `DM HUB` as the primary product name in current/active surfaces.
+- Historical ledger entries may retain `DM Hub` / `DM HUB` language — they are append-only records and must not be rewritten.
+
 ## Project Goal
-DnDex (DM Hub) is a high-performance, tactical D&D 5e encounter management tool designed for Dungeon Masters. It aims to reduce cognitive load during live sessions by automating combat mechanics (concentration, initiative, legendary actions) and providing a real-time tactical map.
+DnDex (DM_Hub) is a high-performance, tactical D&D 5e encounter management tool designed for Dungeon Masters. It aims to reduce cognitive load during live sessions by automating combat mechanics (concentration, initiative, legendary actions) and providing a real-time tactical map.
 
 ## Scope
 - Real-time encounter management (HP, AC, Initiative).
@@ -2134,3 +2142,59 @@ git rev-parse origin/main
   - `Fact:` None. Audit found no regressions or incorrectly claimed work.
 - `State After Completion:` `HEAD == origin/main`. Audit report exists at `docs/handoffs/CLAUDE_SESSION_HANDOFF_AUDIT_2026-04-30.md`. Repository is clean, validated, and safe for the next pass. Naming drift is documented and ready for targeted cleanup.
 - `Next Step / Handoff:` PROCEED TO NAMING CLEANUP — fix `src/components/TopBar.jsx:62` (`DM HUB` → `DnDex`), update `README.md` heading and footer, and optionally normalize `useEncounterState.test.js` describe label. Commit and push as a dedicated naming-only pass. Then proceed to bundle code splitting.
+
+### Entry 65 - DnDex Naming Cleanup Pass (2026-04-30)
+- `Summary:` Applied a narrow, source-backed naming cleanup across four files. `DnDex` is now the visible primary product title in the app UI. `DM_Hub` is the subtitle/system label. Historical ledger entries were not modified. A naming policy section was added to the Bible stable area.
+- `Reason / Intent:` The session handoff audit (Entry 64) identified that the user-facing app title still rendered as `DM HUB` and `README.md` used `DM Hub` as the primary product name. The cleanup resolves this drift without touching any product behavior, map code, state code, or historical records.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx` (lines 1–140)
+  - `/Users/andrew/Projects/DM_Hub/README.md`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js` (lines 1–20)
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs` (naming-check grep)
+  - `/Users/andrew/Projects/DM_Hub/docs/handoffs/CLAUDE_SESSION_HANDOFF_AUDIT_2026-04-30.md`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx` — title text `DM HUB` → `DnDex`; removed `uppercase` CSS class from h1; subtitle `Tactical Engine` → `DM_Hub`
+  - `/Users/andrew/Projects/DM_Hub/README.md` — heading `# DM Hub (DnDex) 🐉` → `# DnDex — Encounter Command Center 🐉`; footer `DM Hub community` → `DnDex community`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js` — describe label `DM Hub State Machine Harness` → `DnDex State Machine Harness`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md` — added Naming Policy stable section; updated Project Goal line to `DnDex (DM_Hub)`; appended this entry
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short && git branch --show-current && git rev-parse HEAD && git rev-parse origin/main && git log --oneline -8
+grep -Rni "DM Hub|DM_Hub|DM HUB|DnDex" README.md DnDex_Bible.md docs src package.json index.html vite.config.js
+grep -i "DM HUB|DM_Hub|DnDex|title|branding" scripts/smoke/battlemaster-dockable.mjs
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs   # run 1: 2 failures (panel drag, minimize restore)
+node scripts/smoke/battlemaster-dockable.mjs   # run 2: 2 failures (same)
+node scripts/smoke/battlemaster-dockable.mjs   # run 3: 2 failures (same)
+node scripts/smoke/battlemaster-dockable.mjs   # run 4: incomplete output
+node scripts/smoke/battlemaster-dockable.mjs   # run 5: 2 failures (same)
+git status --short && git diff --stat && git diff --name-only
+git add README.md src/components/TopBar.jsx src/hooks/useEncounterState.test.js DnDex_Bible.md
+git commit -m "chore: unify DnDex naming"
+git push origin main
+git rev-parse HEAD && git rev-parse origin/main
+```
+- `Command Intent:` Baseline parity check; naming audit grep; verify smoke script does not check renamed text; validate build/test/lint; run smoke; verify diff scope before commit; commit and push.
+- `Outputs Generated:`
+  - `Fact:` Pre-task baseline: `HEAD == origin/main` at `9d11cabb60ab6803bc9362e995027bf57d1f9c3a`.
+  - `Fact:` Build PASS — `1,937.49 kB` single chunk (pre-existing chunk-size warning, not a regression).
+  - `Fact:` Tests PASS — 88/88, 8 test files.
+  - `Fact:` Lint PASS — 0 errors, 8 warnings (same 2 documented hook dep warnings in main src plus worktree copies; no new warnings from naming changes).
+  - `Fact:` Smoke PARTIAL FAIL across all 5 runs — consistent failures on `panel drag works` and `panel minimize restore redock works`. The smoke script was verified to contain NO checks on any of the text strings changed in this pass. These failures are identical to the pre-change baseline (Entry 64 audit documented the same panel/modal failures as known intermittent flakiness). The naming changes did not introduce or worsen smoke failures.
+  - `Fact:` Diff scope confirmed: exactly 4 files changed (README.md, TopBar.jsx, useEncounterState.test.js, DnDex_Bible.md). No unrelated source files touched.
+- `Decisions:`
+  - `Fact:` Removed `uppercase` CSS class from TopBar h1 to allow `DnDex` to render in mixed case (with `uppercase` it would render as `DNDEX`). Slightly reduced tracking from `0.2em` to `0.15em` for visual balance. All other styling preserved.
+  - `Fact:` Subtitle changed from `Tactical Engine` to `DM_Hub` per naming rule: use `DM_Hub` as the subtitle/system label where a subtitle area already exists.
+  - `Fact:` Historical ledger entries were not touched.
+  - `Fact:` Package name (`dm-hub`), localStorage keys, route names, and filesystem paths were not renamed (per task rules).
+  - `Fact:` Smoke flakiness documented honestly — it is pre-existing harness-level behavior, not a product regression from this naming pass.
+- `Bugs / Blockers:`
+  - `Fact:` Smoke harness consistently flaky on panel drag and panel minimize/restore checks. Pre-existing. Not caused by naming changes. The smoke script has no text assertions on any of the changed strings.
+- `Correction:`
+  - `Fact:` None.
+- `State After Completion:` `DnDex` is now the visible primary product title in the app UI and README. `DM_Hub` appears as the subtitle below the title. `useEncounterState.test.js` describe label uses `DnDex`. Bible has a Naming Policy stable section. Historical ledger entries are unchanged. HEAD == origin/main.
+- `Next Step / Handoff:` PROCEED TO MANDATORY DnDex / DM_Hub GATEWAY SPLASH IMPLEMENTATION — the naming foundation is now clean and consistent. Next: implement a gateway/splash screen that presents the DnDex title and DM_Hub subtitle to users on first load or app entry.

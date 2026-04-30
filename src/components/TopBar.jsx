@@ -58,12 +58,12 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
       {/* 1. Branding & Navigation */}
       <div className="flex items-center justify-between w-full md:w-auto gap-4">
         <div className="flex flex-col">
-          <h1 className="text-lg md:text-xl font-black tracking-[0.2em] text-gradient-ether uppercase italic">
-            DM HUB
+          <h1 className="text-lg md:text-xl font-black tracking-[0.15em] text-gradient-ether italic">
+            DnDex
           </h1>
           <div className="flex items-center gap-1.5 -mt-1">
              <div className="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-             <span className="text-[7px] font-bold text-slate-600 tracking-[0.3em] uppercase">Tactical Engine</span>
+             <span className="text-[7px] font-bold text-slate-600 tracking-[0.3em] uppercase">DM_Hub</span>
           </div>
         </div>
 
