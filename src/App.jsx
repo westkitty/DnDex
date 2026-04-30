@@ -7,6 +7,7 @@ import RulesPanel from './components/RulesPanel';
 import BestiaryModal from './components/BestiaryModal';
 import CommandPalette from './components/CommandPalette';
 import SnapshotDrawer from './components/SnapshotDrawer';
+import { WorkspaceProvider } from './components/workspace/WorkspaceProvider';
 import { AnimatePresence, motion, LayoutGroup } from 'framer-motion';
 import { ToastProvider, useToast } from './components/ToastProvider';
 import { RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
@@ -96,7 +97,7 @@ function AppContent() {
 
   // FSM-style state management
   const [activeModal, setActiveModal] = useState(UI_MODALS.NONE);
-  const [view, setView] = useState(UI_VIEWS.LIST);
+  const [view, setView] = useState(UI_VIEWS.BATTLEMASTER);
   const [rulesQuery, setRulesQuery] = useState('');
 
   // Derived state
@@ -180,6 +181,8 @@ return (
               encounter={encounter}
               activeEntity={activeEntity}
               toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
+              toggleRules={() => setActiveModal(UI_MODALS.RULES)}
+              toggleSnapshots={() => setActiveModal(UI_MODALS.SNAPSHOTS)}
             />
           ) : (
             <MainDisplay
@@ -278,7 +281,9 @@ function App() {
   return (
     <AppErrorBoundary>
       <ToastProvider>
-        <AppContent />
+        <WorkspaceProvider>
+          <AppContent />
+        </WorkspaceProvider>
       </ToastProvider>
     </AppErrorBoundary>
   );

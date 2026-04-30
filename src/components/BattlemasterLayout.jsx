@@ -1,262 +1,318 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Swords, Users } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
 import MapDisplay from './MapDisplay';
 import NowActingPanel from './NowActingPanel';
 import InitiativeLedger from './InitiativeLedger';
 import BattlemasterQuickActions from './BattlemasterQuickActions';
+import AppToolRail from './AppToolRail';
+import DockableWorkspace from './workspace/DockableWorkspace';
+import DockablePanel from './workspace/DockablePanel';
+import BattlemasterContextDock from './BattlemasterContextDock';
+import { useWorkspace } from './workspace/workspaceContext';
 
-// ── Layout constants ─────────────────────────────────────────────
-const MIN_PANEL_W = 240;
-const MAX_PANEL_W = 420;
-const COLLAPSED_W = 36;
-const SPRING = { type: 'spring', stiffness: 320, damping: 32 };
+const defaultPanels = () => ({
+  left: { id: 'left', title: 'Combat', docked: true, collapsed: false, minimized: false, width: 340, height: 420, left: 80, top: 120, z: 20 },
+  right: { id: 'right', title: 'Initiative', docked: true, collapsed: false, minimized: false, width: 380, height: 520, left: 900, top: 100, z: 21 },
+  bottom: { id: 'bottom', title: 'Prep Dock', docked: true, collapsed: true, minimized: false, width: 620, height: 230, left: 260, top: 520, z: 22 }
+});
 
-function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-function computeInitialPanelWidth() {
-  if (typeof window === 'undefined') return 300;
-  return clamp(Math.floor(window.innerWidth * 0.22), MIN_PANEL_W, MAX_PANEL_W);
-}
+const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRules, toggleSnapshots }) => {
+  const [panels, setPanels] = useState(defaultPanels);
+  const [leftWidth, setLeftWidth] = useState(340);
+  const [rightWidth, setRightWidth] = useState(380);
+  const [bottomHeight, setBottomHeight] = useState(230);
+  const [isResizing, setIsResizing] = useState(null);
+  const { layoutLocked, mode } = useWorkspace();
+  const dragRef = useRef({ x: 0, width: 0 });
 
-// ── Component ────────────────────────────────────────────────────
-const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary }) => {
-  const initW = computeInitialPanelWidth();
+  const minimizedPanels = useMemo(() => {
+    const items = {};
+    Object.values(panels).forEach((panel) => {
+      if (panel.minimized) items[panel.id] = panel.title;
+    });
+    return items;
+  }, [panels]);
 
-  // Separate widths so each panel resizes independently
-  const [leftWidth, setLeftWidth] = useState(initW);
-  const [rightWidth, setRightWidth] = useState(initW);
+  const bumpFocus = (id) => {
+    setPanels((prev) => {
+      const zTop = Math.max(...Object.values(prev).map((p) => p.z || 1)) + 1;
+      return { ...prev, [id]: { ...prev[id], z: zTop } };
+    });
+  };
 
-  // Auto-collapse on narrow viewports — only on initial mount, respects user choices after
-  const [leftOpen, setLeftOpen] = useState(() => window.innerWidth >= 700);
-  const [rightOpen, setRightOpen] = useState(() => window.innerWidth >= 900);
-
-  // Track whether a resize drag is active (disables spring to avoid lag)
-  const [isResizing, setIsResizing] = useState(false);
-
-  // Refs for drag state — avoids triggering re-renders during mousemove
-  const dragging = useRef(null); // null | 'left' | 'right'
-  const dragStartX = useRef(0);
-  const dragStartW = useRef(0);
-
-  // ── Global mouse handlers for resize ──────────────────────────
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!dragging.current) return;
-      const delta = e.clientX - dragStartX.current;
-      if (dragging.current === 'left') {
-        setLeftWidth(clamp(dragStartW.current + delta, MIN_PANEL_W, MAX_PANEL_W));
-      } else {
-        setRightWidth(clamp(dragStartW.current - delta, MIN_PANEL_W, MAX_PANEL_W));
+  const updatePanel = (id, patch) => {
+    setPanels((prev) => {
+      const current = prev[id];
+      if (!current) return prev;
+      const next = { ...current, ...patch };
+      if (!next.docked) {
+        const maxLeft = Math.max(16, window.innerWidth - next.width - 16);
+        const maxTop = Math.max(48, window.innerHeight - next.height - 16);
+        next.left = clamp(next.left, 16, maxLeft);
+        next.top = clamp(next.top, 48, maxTop);
       }
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const redockPanel = (id) => {
+    setPanels((prev) => ({ ...prev, [id]: { ...defaultPanels()[id], z: prev[id].z } }));
+  };
+
+  const undockPanel = (id) => {
+    setPanels((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        docked: false,
+        collapsed: false,
+        minimized: false,
+        left: prev[id].left || 140,
+        top: prev[id].top || 120
+      }
+    }));
+  };
+
+  const minimizePanel = (id) => updatePanel(id, { minimized: true });
+  const restorePanel = (id) => updatePanel(id, { minimized: false, collapsed: false });
+
+  const resetLayout = () => {
+    if (!window.confirm('Reset workspace layout? Encounter data will not change.')) return;
+    setPanels(defaultPanels());
+    setLeftWidth(340);
+    setRightWidth(380);
+    setBottomHeight(230);
+  };
+
+  const startResize = (kind, event) => {
+    if (layoutLocked) return;
+    dragRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      leftWidth,
+      rightWidth,
+      bottomHeight
     };
+    setIsResizing(kind);
+    event.preventDefault();
+
+    const onMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - dragRef.current.x;
+      const deltaY = moveEvent.clientY - dragRef.current.y;
+      if (kind === 'left') setLeftWidth(clamp(dragRef.current.leftWidth + deltaX, 260, 500));
+      if (kind === 'right') setRightWidth(clamp(dragRef.current.rightWidth - deltaX, 280, 520));
+      if (kind === 'bottom') setBottomHeight(clamp(dragRef.current.bottomHeight - deltaY, 170, 360));
+    };
+
     const onUp = () => {
-      if (dragging.current) {
-        dragging.current = null;
-        document.body.style.cursor = '';
-        setIsResizing(false);
-      }
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
+      setIsResizing(null);
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, []);
 
-  const startDrag = useCallback((side, e) => {
-    if (side === 'left' && !leftOpen) return;
-    if (side === 'right' && !rightOpen) return;
-    dragging.current = side;
-    dragStartX.current = e.clientX;
-    dragStartW.current = side === 'left' ? leftWidth : rightWidth;
-    document.body.style.cursor = 'col-resize';
-    setIsResizing(true);
-    e.preventDefault();
-  }, [leftOpen, rightOpen, leftWidth, rightWidth]);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
-  const panelTransition = isResizing ? { duration: 0 } : SPRING;
+  const leftDockVisible = panels.left.docked && !panels.left.minimized;
+  const rightDockVisible = panels.right.docked && !panels.right.minimized;
+  const bottomDockVisible = panels.bottom.docked && !panels.bottom.minimized;
 
   return (
-    <div className="flex h-full w-full overflow-hidden select-none">
+    <DockableWorkspace>
+      <div className="flex h-full w-full overflow-hidden">
+        <AppToolRail minimizedPanels={minimizedPanels} onRestorePanel={restorePanel} onResetLayout={resetLayout} />
 
-      {/* ── LEFT PANEL — Now Acting ──────────────────────────── */}
-      <motion.div
-        animate={{ width: leftOpen ? leftWidth : COLLAPSED_W }}
-        transition={panelTransition}
-        className="relative flex-shrink-0 flex flex-col h-full bg-[var(--color-obsidian-950)] border-r border-white/5 z-10 overflow-hidden"
-      >
-        <AnimatePresence mode="wait">
-          {leftOpen ? (
-            <motion.div
-              key="left-open"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { delay: 0.07 } }}
-              exit={{ opacity: 0, transition: { duration: 0.08 } }}
-              className="absolute inset-0 flex flex-col"
-              style={{ width: leftWidth }}
-            >
-              <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/5 bg-black/30 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <Swords className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Now Acting</span>
-                </div>
-                <button
-                  onClick={() => setLeftOpen(false)}
-                  className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-slate-600 hover:text-slate-300"
-                  title="Collapse Now Acting panel"
+        <div className="relative flex-1 h-full">
+          <div className="absolute top-2 left-2 z-40 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-[10px] text-slate-300 pointer-events-none">
+            {mode === 'combat' ? 'Combat mode keeps live turn controls visible.' : 'Prep mode focuses on setup tools before initiative.'}
+          </div>
+
+          <div className="flex h-full w-full">
+            {leftDockVisible && (
+              <div style={{ width: panels.left.collapsed ? 44 : leftWidth }} className="h-full relative">
+                <DockablePanel
+                  id="left"
+                  title="Combat"
+                  state={panels.left}
+                  onChange={updatePanel}
+                  onFocus={bumpFocus}
+                  onMinimize={minimizePanel}
+                  onRestore={restorePanel}
+                  onRedock={redockPanel}
+                  onReset={redockPanel}
+                  onUndock={undockPanel}
+                  layoutLocked={layoutLocked}
+                  className="h-full"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-                <NowActingPanel
-                  round={encounter.state.round}
-                  activeEntity={activeEntity}
-                  advanceTurn={encounter.advanceTurn}
-                  applyDamage={encounter.applyDamage}
-                  applyHealing={encounter.applyHealing}
-                  updateEntity={encounter.updateEntity}
-                  spendLegendaryAction={encounter.spendLegendaryAction}
-                  spendLegendaryResistance={encounter.spendLegendaryResistance}
-                />
-                {!activeEntity && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-12 px-4 text-center">
-                    <Swords className="w-8 h-8 text-slate-800" />
-                    <p className="text-[9px] font-black text-slate-700 uppercase tracking-widest leading-relaxed">
-                      No active combatant.<br />Add units and begin.
-                    </p>
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 overflow-y-auto scrollbar-custom min-h-0">
+                      <NowActingPanel
+                        round={encounter.state.round}
+                        activeEntity={activeEntity}
+                        advanceTurn={encounter.advanceTurn}
+                        applyDamage={encounter.applyDamage}
+                        applyHealing={encounter.applyHealing}
+                        updateEntity={encounter.updateEntity}
+                        spendLegendaryAction={encounter.spendLegendaryAction}
+                        spendLegendaryResistance={encounter.spendLegendaryResistance}
+                      />
+                    </div>
+                    <BattlemasterQuickActions
+                      activeEntity={activeEntity}
+                      applyDamage={encounter.applyDamage}
+                      applyHealing={encounter.applyHealing}
+                    />
                   </div>
-                )}
+                </DockablePanel>
               </div>
+            )}
 
-              {/* Quick Strike strip — pinned at panel bottom */}
-              <BattlemasterQuickActions
-                activeEntity={activeEntity}
-                applyDamage={encounter.applyDamage}
-                applyHealing={encounter.applyHealing}
+            {leftDockVisible && !panels.left.collapsed && (
+              <div
+                aria-label="Resize Left Panel"
+                className="w-[5px] h-full cursor-col-resize bg-white/5 hover:bg-indigo-500/30"
+                onMouseDown={(event) => startResize('left', event)}
               />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="left-collapsed"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { delay: 0.07 } }}
-              exit={{ opacity: 0, transition: { duration: 0.08 } }}
-              className="absolute inset-0 flex flex-col items-center pt-3 gap-2"
-            >
-              <button
-                onClick={() => setLeftOpen(true)}
-                className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-600 hover:text-indigo-400"
-                title="Expand Now Acting panel"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-              <div className="flex-1 flex items-center justify-center">
-                <span
-                  className="text-[8px] font-black text-slate-800 uppercase tracking-widest select-none"
-                  style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+            )}
+
+            <div className="flex-1 min-w-0 h-full overflow-hidden">
+              <MapDisplay encounter={encounter} />
+            </div>
+
+            {rightDockVisible && !panels.right.collapsed && (
+              <div
+                aria-label="Resize Right Panel"
+                className="w-[5px] h-full cursor-col-resize bg-white/5 hover:bg-indigo-500/30"
+                onMouseDown={(event) => startResize('right', event)}
+              />
+            )}
+
+            {rightDockVisible && (
+              <div style={{ width: panels.right.collapsed ? 44 : rightWidth }} className="h-full relative">
+                <DockablePanel
+                  id="right"
+                  title="Initiative"
+                  state={panels.right}
+                  onChange={updatePanel}
+                  onFocus={bumpFocus}
+                  onMinimize={minimizePanel}
+                  onRestore={restorePanel}
+                  onRedock={redockPanel}
+                  onReset={redockPanel}
+                  onUndock={undockPanel}
+                  layoutLocked={layoutLocked}
+                  className="h-full"
                 >
-                  Now Acting
-                </span>
+                  <InitiativeLedger encounter={encounter} toggleBestiary={toggleBestiary} />
+                </DockablePanel>
               </div>
-            </motion.div>
+            )}
+          </div>
+
+          {bottomDockVisible && (
+            <>
+              {!panels.bottom.collapsed && (
+                <div
+                  aria-label="Resize Bottom Dock"
+                  className="absolute left-0 right-0 cursor-row-resize h-[5px] bg-white/5 hover:bg-indigo-500/30"
+                  style={{ bottom: bottomHeight }}
+                  onMouseDown={(event) => startResize('bottom', event)}
+                />
+              )}
+              <div className="absolute left-0 right-0 bottom-0" style={{ height: panels.bottom.collapsed ? 42 : bottomHeight }}>
+                <DockablePanel
+                  id="bottom"
+                  title="Prep Dock"
+                  state={panels.bottom}
+                  onChange={updatePanel}
+                  onFocus={bumpFocus}
+                  onMinimize={minimizePanel}
+                  onRestore={restorePanel}
+                  onRedock={redockPanel}
+                  onReset={redockPanel}
+                  onUndock={undockPanel}
+                  layoutLocked={layoutLocked}
+                  className="h-full"
+                >
+                  <BattlemasterContextDock
+                    toggleBestiary={toggleBestiary}
+                    toggleRules={toggleRules}
+                    toggleSnapshots={toggleSnapshots}
+                    exportState={encounter.exportState}
+                    importState={encounter.importState}
+                  />
+                </DockablePanel>
+              </div>
+            </>
           )}
-        </AnimatePresence>
-      </motion.div>
 
-      {/* ── LEFT RESIZE HANDLE ───────────────────────────────── */}
-      {leftOpen && (
-        <div
-          className="w-[5px] flex-shrink-0 h-full cursor-col-resize z-20 group"
-          onMouseDown={(e) => startDrag('left', e)}
-          title="Drag to resize"
-        >
-          <div className="h-full w-[1px] mx-auto bg-white/5 group-hover:bg-indigo-500/40 group-active:bg-indigo-500/60 transition-colors" />
+          {Object.values(panels)
+            .filter((panel) => !panel.docked && !panel.minimized)
+            .map((panel) => {
+              const content = panel.id === 'left'
+                ? (
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 overflow-y-auto scrollbar-custom min-h-0">
+                      <NowActingPanel
+                        round={encounter.state.round}
+                        activeEntity={activeEntity}
+                        advanceTurn={encounter.advanceTurn}
+                        applyDamage={encounter.applyDamage}
+                        applyHealing={encounter.applyHealing}
+                        updateEntity={encounter.updateEntity}
+                        spendLegendaryAction={encounter.spendLegendaryAction}
+                        spendLegendaryResistance={encounter.spendLegendaryResistance}
+                      />
+                    </div>
+                    <BattlemasterQuickActions
+                      activeEntity={activeEntity}
+                      applyDamage={encounter.applyDamage}
+                      applyHealing={encounter.applyHealing}
+                    />
+                  </div>
+                )
+                : panel.id === 'right'
+                  ? <InitiativeLedger encounter={encounter} toggleBestiary={toggleBestiary} />
+                  : (
+                    <BattlemasterContextDock
+                      toggleBestiary={toggleBestiary}
+                      toggleRules={toggleRules}
+                      toggleSnapshots={toggleSnapshots}
+                      exportState={encounter.exportState}
+                      importState={encounter.importState}
+                    />
+                  );
+
+              return (
+                <DockablePanel
+                  key={panel.id}
+                  id={panel.id}
+                  title={panel.title}
+                  state={panel}
+                  onChange={updatePanel}
+                  onFocus={bumpFocus}
+                  onMinimize={minimizePanel}
+                  onRestore={restorePanel}
+                  onRedock={redockPanel}
+                  onReset={redockPanel}
+                  onUndock={undockPanel}
+                  layoutLocked={layoutLocked}
+                >
+                  {content}
+                </DockablePanel>
+              );
+            })}
+
+          {isResizing && (
+            <div className="absolute top-2 right-2 z-40 px-2 py-1 rounded-lg bg-black/50 border border-white/10 text-[10px] text-slate-300">
+              Resize panels from their edges or corners.
+            </div>
+          )}
         </div>
-      )}
-
-      {/* ── CENTER — Tactical Map ────────────────────────────── */}
-      <div className="flex-1 min-w-0 h-full overflow-hidden">
-        <MapDisplay encounter={encounter} />
       </div>
-
-      {/* ── RIGHT RESIZE HANDLE ──────────────────────────────── */}
-      {rightOpen && (
-        <div
-          className="w-[5px] flex-shrink-0 h-full cursor-col-resize z-20 group"
-          onMouseDown={(e) => startDrag('right', e)}
-          title="Drag to resize"
-        >
-          <div className="h-full w-[1px] mx-auto bg-white/5 group-hover:bg-indigo-500/40 group-active:bg-indigo-500/60 transition-colors" />
-        </div>
-      )}
-
-      {/* ── RIGHT PANEL — Field Units (Initiative) ───────────── */}
-      <motion.div
-        animate={{ width: rightOpen ? rightWidth : COLLAPSED_W }}
-        transition={panelTransition}
-        className="relative flex-shrink-0 flex flex-col h-full bg-[var(--color-obsidian-950)] border-l border-white/5 z-10 overflow-hidden"
-      >
-        <AnimatePresence mode="wait">
-          {rightOpen ? (
-            <motion.div
-              key="right-open"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { delay: 0.07 } }}
-              exit={{ opacity: 0, transition: { duration: 0.08 } }}
-              className="absolute inset-0 flex flex-col"
-              style={{ width: rightWidth }}
-            >
-              <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/5 bg-black/30 flex-shrink-0">
-                <button
-                  onClick={() => setRightOpen(false)}
-                  className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-slate-600 hover:text-slate-300"
-                  title="Collapse Field Units panel"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Field Units</span>
-                  <Users className="w-3.5 h-3.5 text-indigo-400" />
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-hidden min-h-0">
-                <InitiativeLedger encounter={encounter} toggleBestiary={toggleBestiary} />
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="right-collapsed"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { delay: 0.07 } }}
-              exit={{ opacity: 0, transition: { duration: 0.08 } }}
-              className="absolute inset-0 flex flex-col items-center pt-3 gap-2"
-            >
-              <button
-                onClick={() => setRightOpen(true)}
-                className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-600 hover:text-indigo-400"
-                title="Expand Field Units panel"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <div className="flex-1 flex items-center justify-center">
-                <span
-                  className="text-[8px] font-black text-slate-800 uppercase tracking-widest select-none"
-                  style={{ writingMode: 'vertical-rl' }}
-                >
-                  Field Units
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-    </div>
+    </DockableWorkspace>
   );
 };
 

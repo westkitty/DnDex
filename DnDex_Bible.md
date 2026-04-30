@@ -1252,3 +1252,54 @@ The codebase is ready to extend. The next natural improvements are MapDisplay re
 - `Headless Capture:`
   - `Unknown:` No screenshot artifacts generated in this extraction cycle.
 - `State After Completion:` Documentation handoff complete and ready for next UI planning assistant.
+
+### Entry 44 - Dockable Battlemaster Workspace + Theme System Pass (2026-04-30)
+- `Summary:` Implemented a staged Battlemaster-first dockable workspace upgrade with UI-only layout state, multi-theme skinning, tool rail controls, and bottom context dock while preserving `useEncounterState` action architecture and map engine behavior.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/docs/ui-ux/UI_IMPLEMENTATION_INTELLIGENCE_REPORT.md`
+  - `/Users/andrew/Projects/DM_Hub/docs/ui-ux/UI_COMPONENT_INVENTORY.json`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterLayout.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/index.css`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterLayout.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/index.css`
+  - `/Users/andrew/Projects/DM_Hub/package.json`
+  - `/Users/andrew/Projects/DM_Hub/package-lock.json`
+  - `/Users/andrew/Projects/DM_Hub/src/components/AppToolRail.jsx` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterContextDock.jsx` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/ThemeSelector.jsx` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/WorkspaceProvider.jsx` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/workspaceContext.js` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/DockableWorkspace.jsx` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/DockablePanel.jsx` (new)
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/LayoutControls.jsx` (new)
+- `Architecture Decisions:`
+  - `Fact:` Workspace preferences (`theme`, `mode`, `layoutLocked`) are stored in a UI-only workspace provider and optional localStorage (`dndex-workspace-preferences-v1`), not in encounter state/history.
+  - `Fact:` Dockable panel state is local to `BattlemasterLayout` and supports collapse, expand, minimize, restore, undock, redock, reset position, and focus z-order.
+  - `Fact:` Left/right docked panel resize remains edge-handle based; floating panel resize uses corner handle.
+  - `Fact:` Map engine (`MapDisplay`) mutation/action wiring was preserved; no wholesale rewrite performed.
+  - `Fact:` Dragon Glass remains default. Added theme skins via root `data-theme` variants: `dragon-glass`, `simple-utility`, `sketchbook`, `terminal`, `starfleet`.
+- `Commands Run:`
+  - `git status --short`
+  - `npm run build`
+  - `npx vitest run`
+  - `npm run lint`
+  - `npm install --save-dev playwright`
+  - `npx playwright install chromium`
+  - `node /tmp/dndex-smoke/battlemaster-dockable.mjs`
+- `Build/Test/Lint/Smoke Results:`
+  - `Build:` PASS (`vite build`).
+  - `Vitest:` PASS (`16/16`).
+  - `Lint:` FAIL with pre-existing baseline `16 problems (12 errors, 4 warnings)` in `CommandPalette.jsx`, `EntityCard.jsx`, `MapDisplay.jsx`, `RulesPanel.jsx`, `ToastProvider.jsx`, `useEncounterState.js`.
+  - `Headless smoke:` PARTIAL PASS. `/tmp/dndex-smoke/battlemaster-dockable-results.json` shows `19 passed, 1 failed` (failed check: `command palette opens` under automated shortcut triggering). No console/page errors.
+- `Known Limitations:`
+  - Command palette shortcut check was unreliable in headless automation despite app support in manual flows.
+  - Added Playwright dev dependency for required headless testing.
+  - Workspace layouts are currently Battlemaster-centric; list/map layouts remain existing structure.
+- `Commit Hash:` PENDING
+- `Push Status:` PENDING
+- `Next Handoff Step:` Resolve or accept headless command-palette shortcut test variance, then continue with deeper keyboard fallback polish for panel layout actions if required.
