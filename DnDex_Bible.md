@@ -824,3 +824,30 @@ The project is a high-fidelity, feature-rich D&D manager. The state machine is r
 - `Correction:` None.
 - `State After Completion:` Headless smoke test PASS. No console or page errors detected. Sub-components are rendering and interactive.
 - `Next Step / Handoff:` Verification complete. Proceed with UI/UX polish.
+
+### Entry 30 - Session Start: Engineering Sweep (2026-04-29)
+- `Summary:` New session started for exhaustive engineering sweep. Bible read in full. Repository state captured. 4 critical bugs identified.
+- `Reason / Intent:` Continuing from Entry 29. Performing full correctness/wiring audit, implementing map undo/redo, wiring GroupDamageSheet, adding Fog of War foundation, and headless smoke validation.
+- `Files Read:` DnDex_Bible.md, package.json, vite.config.js, src/App.jsx, src/hooks/useEncounterState.js, src/hooks/useEncounterState.test.js, src/components/MapDisplay.jsx, src/components/TopBar.jsx, src/components/MainDisplay.jsx, src/components/InitiativeLedger.jsx, src/components/EntityCard.jsx, src/components/NowActingPanel.jsx, src/components/GroupDamageSheet.jsx, src/utils/combatEngine.js, src/data/MapTemplates.js
+- `Files Changed:` DnDex_Bible.md
+- `Commands Run:`
+  ```bash
+  git status --short
+  git branch --show-current
+  find src -maxdepth 3 -type f | sort
+  ```
+- `Command Intent:` Establish baseline state.
+- `Outputs Generated:` docs/superpowers/plans/2026-04-29-engineering-sweep.md
+- `Decisions:` 4 critical bugs identified — B-MAP-01 (all map ops skip history), B-MAP-02 (paint buffers nothing), B-MAP-03 (clearMap message dropped), B-GDS-01/02 (GroupDamageSheet unwired).
+- `Facts:`
+  - Last Bible entry was Entry 29. This is Entry 30.
+  - updateMap always passes skipHistory: true — map edits cannot be undone.
+  - GroupDamageSheet is never imported in App.jsx or MainDisplay.jsx.
+  - clearMap silently drops its log message (second arg to updateMap is ignored).
+  - Token drag already has correct history boundaries (isFinal param in updateToken).
+  - combatEngine.js exists on disk but is untracked (git ??); already imported by useEncounterState.
+  - public/assets/ tile directory exists untracked.
+- `Bugs / Blockers:` B-MAP-01, B-MAP-02, B-MAP-03, B-GDS-01, B-GDS-02.
+- `Corrections:` None to prior entries.
+- `State After Completion:` Session baseline established. Plan written to docs/superpowers/plans/2026-04-29-engineering-sweep.md.
+- `Next Step / Handoff:` Create BUTTON_CONTROL_AUDIT.md, then fix map history.
