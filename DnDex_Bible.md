@@ -1602,3 +1602,41 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` Smoke script is now deterministic for snapshot and panel restore checks under headless execution.
 - `State After Completion:` Floating panels are automatically clamped after viewport changes and recoverable via existing controls.
 - `Next Step / Handoff:` Execute Phase 6 full feature representation audit and patch only small safe access gaps if found.
+
+### Entry 52 - Phase 6 Battlemaster Feature Representation Audit (2026-04-30)
+- `Summary:` Produced a full Battlemaster feature representation checklist artifact and verified core combat/prep/map/layout controls remain accessible.
+- `Reason / Intent:` Complete Phase 6 guardrail audit to ensure no critical controls were lost or buried after hardening changes.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/MapDisplay.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/TopBar.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/BattlemasterLayout.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/workspace/DockablePanel.jsx`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/docs/ui-ux/BATTLEMASTER_FEATURE_REPRESENTATION_AUDIT.md` (new)
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+sed -n '1,320p' src/components/MapDisplay.jsx
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Verify feature access locations and produce implementation-safe audit evidence with validation results.
+- `Outputs Generated:`
+  - `Fact:` Created `/Users/andrew/Projects/DM_Hub/docs/ui-ux/BATTLEMASTER_FEATURE_REPRESENTATION_AUDIT.md`.
+  - `Fact:` Audit table documents each critical control with label, file/component, action, combat/prep visibility, accessibility note, risk, and status.
+  - `Fact:` Validation results:
+    - `npm run build`: PASS
+    - `npx vitest run`: PASS (`19/19`)
+    - `npm run lint`: PASS with warnings only (`0 errors, 2 warnings`)
+    - `node scripts/smoke/battlemaster-dockable.mjs`: PASS (`Smoke pass: 20 checks`)
+- `Decisions:`
+  - `Fact:` No additional feature-access code patch was required in this phase; existing controls remain represented.
+- `Bugs / Blockers:`
+  - `Fact:` No blocker in this phase.
+- `Correction:`
+  - `Fact:` None.
+- `State After Completion:` Feature representation artifact is in-repo and current to the hardening continuation state.
+- `Next Step / Handoff:` Run Phase 7 final validation, append final Bible summary, commit remaining docs/update entries, and push to `origin/main`.
