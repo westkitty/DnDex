@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
-  ChevronRight, ChevronLeft, Undo, Redo, Book, UserPlus, Ghost, 
-  Settings, Download, Shield, Swords, FileUp, Skull, Camera, Plus, Layout, RotateCcw
+  ChevronRight, ChevronLeft, Undo, Redo, Book, UserPlus, Ghost,
+  Settings, Download, Shield, Swords, FileUp, Skull, Camera, Plus, Layout, RotateCcw, LayoutDashboard
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import TacticalAlertStack from './TacticalAlertStack';
@@ -78,7 +78,7 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
           >
             <Layout className="w-4 h-4" />
           </button>
-          <button 
+          <button
             onClick={() => setView('map')}
             className={cn(
               "p-2 rounded-lg transition-all",
@@ -87,6 +87,16 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
             title="Tactical Map"
           >
             <Camera className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setView('battlemaster')}
+            className={cn(
+              "p-2 rounded-lg transition-all",
+              view === 'battlemaster' ? "bg-indigo-500/20 text-indigo-300 shadow-sm shadow-indigo-500/20" : "text-slate-500 hover:text-slate-300"
+            )}
+            title="Battlemaster — Map + Panels"
+          >
+            <LayoutDashboard className="w-4 h-4" />
           </button>
         </div>
       </div>

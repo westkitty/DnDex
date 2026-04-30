@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useEncounterState } from './hooks/useEncounterState';
 import MainDisplay from './components/MainDisplay';
+import BattlemasterLayout from './components/BattlemasterLayout';
 import TopBar from './components/TopBar';
 import RulesPanel from './components/RulesPanel';
 import BestiaryModal from './components/BestiaryModal';
@@ -76,7 +77,8 @@ class AppErrorBoundary extends React.Component {
  */
 const UI_VIEWS = {
   LIST: 'list',
-  MAP: 'map'
+  MAP: 'map',
+  BATTLEMASTER: 'battlemaster'
 };
 
 const UI_MODALS = {
@@ -173,12 +175,20 @@ return (
         />
         
         <main className="flex flex-1 overflow-hidden relative z-10">
-          <MainDisplay
-            encounter={encounter}
-            view={view}
-            activeEntity={activeEntity}
-            toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
-          />
+          {view === UI_VIEWS.BATTLEMASTER ? (
+            <BattlemasterLayout
+              encounter={encounter}
+              activeEntity={activeEntity}
+              toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
+            />
+          ) : (
+            <MainDisplay
+              encounter={encounter}
+              view={view}
+              activeEntity={activeEntity}
+              toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
+            />
+          )}
           
           <AnimatePresence mode="wait">
             {activeModal === UI_MODALS.RULES && (
