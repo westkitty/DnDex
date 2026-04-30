@@ -1234,3 +1234,21 @@ The codebase is ready to extend. The next natural improvements are MapDisplay re
 - `Build:` Passes (no code changes).
 - `Test Results:` 16/16 (no code changes).
 - `State After Completion:` Bible is fully current. Safe to hand off to a successor AI with no stale facts.
+
+### Entry 43 - UI Implementation Intelligence Extraction Handoff (2026-04-30)
+- `Summary:` Completed a source-grounded UI/UX intelligence extraction for a separate planning assistant. No runtime/UI behavior changes were implemented.
+- `Files Created:`
+  - `/Users/andrew/Projects/DM_Hub/docs/ui-ux/UI_IMPLEMENTATION_INTELLIGENCE_REPORT.md`
+  - `/Users/andrew/Projects/DM_Hub/docs/ui-ux/UI_COMPONENT_INVENTORY.json`
+- `Scope Covered:`
+  - Project architecture and routing/FSM model.
+  - Component inventory with props/actions/local state/risk/recommendation metadata.
+  - `useEncounterState` action/state map with history semantics and UI safety notes.
+  - View-by-view map, tactical map engine behavior, combat workflow extraction, design language extraction, feature/control access audit, responsive notes, and implementation guardrails.
+- `Facts Confirmed:`
+  - `Fact:` State remains single-owner in `useEncounterState` and should remain authoritative.
+  - `Fact:` Map engine remains canvas+DOM token hybrid with transform-based pan/zoom.
+  - `Fact:` High-risk actions and destructive controls are concentrated in TopBar/Map tooling and must remain accessible.
+- `Headless Capture:`
+  - `Unknown:` No screenshot artifacts generated in this extraction cycle.
+- `State After Completion:` Documentation handoff complete and ready for next UI planning assistant.
