@@ -2338,3 +2338,46 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` Added brief `waitFor` visibility delays in `scripts/smoke/battlemaster-dockable.mjs` before assertions, resolving the failures.
 - `State After Completion:` Bundle code splitting implemented. Gateway behavior preserved. No onboarding implemented. No encounter state touched. No undo/redo touched. No `useEncounterState.js` edits. No `MapDisplay.jsx` refactor. Build, tests, lint, and smoke all pass.
 - `Next Step / Handoff:` Manual gateway + module-load visual check
+
+### Entry 68 - macOS DnDex Launcher Installation (2026-04-30)
+- `Summary:` Created a local macOS launcher app and reproducible installer script for DnDex.
+- `Reason / Intent:` Allow users to launch DnDex headlessly as a native macOS application without keeping a Terminal window open.
+- `Files Read:`
+  - `DnDex_Bible.md`
+  - `package.json`
+  - `vite.config.js`
+  - `src/components/gateway/GatewaySplash.jsx`
+- `Files Changed:`
+  - `scripts/install-macos-launcher.sh` (new)
+  - `DnDex_Bible.md`
+- `Commands Run:`
+  ```bash
+  chmod +x scripts/install-macos-launcher.sh
+  ./scripts/install-macos-launcher.sh
+  open /Applications/DnDex.app
+  npm run build
+  npx vitest run
+  npm run lint
+  node scripts/smoke/battlemaster-dockable.mjs
+  ```
+- `Launcher Findings:`
+  - Created `/Applications/DnDex.app` with `Info.plist` and `MacOS/DnDex` script.
+  - Detects if port 4173 is occupied by Vite preview to reuse it; otherwise falls back to 4174.
+  - Successfully starts `npx vite preview` in the background and opens the default browser without a visible terminal.
+- `Icon Findings:`
+  - Extracted the `GlyphSVG` from `GatewaySplash.jsx` into a standalone SVG.
+  - Used `qlmanage` to convert it to PNG, then `sips` to generate a `.iconset`, then `iconutil` to generate `DnDex.icns`.
+- `Dock Findings:`
+  - Pinned to the Dock using `dockutil`. If missing, falls back to a python defaults script or manual instructions.
+- `Validation Results:`
+  - `/Applications/DnDex.app` successfully launched.
+  - Build PASS (no product code changed).
+  - Vitest PASS (88/88).
+  - Lint PASS (0 errors, 8 warnings).
+  - Smoke PASS (28 checks).
+- `Commit Hash:` a6cddb7ec47ba261cd88c7be7e5ed47f96360e41
+- `Push Status:` SUCCESS
+- `HEAD == origin/main:` TRUE
+- `State After Completion:` Launcher app is installed in `/Applications` and pinned to the Dock. Product source unchanged. Repository ready for commit.
+- `Remaining Risks:`
+  - None at this time.
