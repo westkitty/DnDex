@@ -1019,3 +1019,36 @@ The project is a high-fidelity, feature-rich D&D manager. The state machine is r
 - `Test Results:` Vitest 16/16. Smoke test 16/16 pass.
 - `State After Completion:` Battlemaster layout is mechanically complete. All combat-facing features work.
 - `Next Step / Handoff:` Final UI polish pass (typography, spacing, glass depth). Or: Fog of War reveal mechanic. Or: bundle code splitting.
+
+### Entry 40 - Session Start: Map Background Image + Layer Controls (2026-04-30)
+- `Goal:` Add uploadable battle map background image to the tactical map, fixed in place and participates in pan/zoom. Add layer editing controls to the palette sidebar.
+- `Research Findings (agent a18fb14275bd29cb3):`
+  - **Roll20:** Background on Map & Background Layer; accepts JPG/PNG/GIF; per-scene upload.
+  - **Foundry VTT:** Scenes have explicit background image (URL or file); layer stack is background → tiles → actors → walls → lights → foreground → GM notes.
+  - **Owlbear:** Drag-and-drop background image; grid alignment tools.
+  - **Technical pattern:** HTML5 VTT apps use `ctx.translate()` + `ctx.scale()` for all layers uniformly — background participates in pan/zoom automatically. Most use external URLs/file paths for storage; DataURL is acceptable for no-server local apps.
+  - **Standard layer order (bottom to top):** Background → Terrain/Tiles → Objects → Tactical Sketches → Fog of War → Tokens (DOM).
+- `Architectural Decisions:`
+  - Store background as DataURL in `map.background.dataUrl` — self-contained, no server needed. For large images this bloats persisted state; acceptable for MVP.
+  - Load into a JS `Image` object (`bgImage` state in MapDisplay) so canvas can `drawImage` it. A `useEffect` watching `map.background.dataUrl` reloads the image object whenever the DataURL changes.
+  - Draw background as the very first canvas operation, before the tile pattern — ensures correct z-order.
+  - `bgImage` added to canvas useEffect dep array; redraws when image loads.
+  - Layer visibility (`sketchesVisible`, `fogVisible`) is local `useState` — not persisted — a view preference, not content data.
+  - `setBackgroundOpacity` / `setBackgroundVisible` use `skipHistory: true` — presentation-only changes don't pollute undo stack.
+  - `setMapBackground` / `clearMapBackground` are history-aware — uploading/removing a background is content-level.
+
+### Entry 41 - Background Image + Layer Controls: Implementation Complete (2026-04-30)
+- `Files Changed:`
+  - `src/hooks/useEncounterState.js` — Added `background: { dataUrl: null, opacity: 1, visible: true }` to `INITIAL_STATE.map`. Added actions: `setMapBackground`, `clearMapBackground`, `setBackgroundOpacity`, `setBackgroundVisible`. All exported.
+  - `src/components/MapDisplay.jsx` — Added `ImagePlus, SlidersHorizontal, X` to lucide imports. Destructured 4 new actions from encounter. Added `bgImage` state + bgImage loader `useEffect`. Added `sketchesVisible`, `fogVisible` local state. Canvas draw: background rendered first with `ctx.globalAlpha` opacity; sketches and fog guarded by visibility state. Updated canvas dep array. Palette sidebar: new "Battle Map" section (upload dropzone → preview with opacity slider, visibility toggle, remove button); new "Layer Visibility" section (Fog, Sketches, Grid, Background — each with eye/eye-off toggle).
+- `Feature Behaviour:`
+  - Upload: palette sidebar → Battle Map section → drop-zone file input reads as DataURL → `setMapBackground` stores in state → bgImage useEffect loads it → canvas redraws with image as bottom layer.
+  - Pan/zoom: image participates automatically via the parent `transform: translate/scale` div — no special handling needed.
+  - Opacity: range slider 0-100%, updates with `skipHistory`. Live preview.
+  - Visibility toggle: eye button hides/shows without destroying the image.
+  - Remove: X button in preview corner calls `clearMapBackground()`, undoable.
+  - Layer panel: four toggle rows for Fog, Sketches, Grid, Background. Background row disabled (greyed) when no image loaded.
+- `Build:` Passes. 1921 kB (unchanged bundle size — no new deps).
+- `Test Results:` Vitest 16/16 pass. ESLint 4 pre-existing errors, 0 new.
+- `State After Completion:` Tactical map now supports full battle-map image workflow. Layer visibility gives DM non-destructive control over all canvas layers.
+- `Next Step / Handoff:` Token snapping improvements, fog-reveal animation, or bundle code-splitting.

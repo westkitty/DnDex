@@ -21,6 +21,7 @@ const INITIAL_STATE = {
     terrain: {},
     objects: [],
     fog: {},
+    background: { dataUrl: null, opacity: 1, visible: true },
     config: {
       gridVisible: true,
       gridSize: 50,
@@ -538,6 +539,37 @@ export const useEncounterState = () => {
   }, [updateState]);
 
   /**
+   * MAP ACTIONS: Background Image
+   */
+  const setMapBackground = useCallback((dataUrl) => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, background: { ...prev.map.background, dataUrl, visible: true } } }),
+      "Battle map background uploaded."
+    );
+  }, [updateState]);
+
+  const clearMapBackground = useCallback(() => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, background: { dataUrl: null, opacity: 1, visible: true } } }),
+      "Battle map background removed."
+    );
+  }, [updateState]);
+
+  const setBackgroundOpacity = useCallback((opacity) => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, background: { ...prev.map.background, opacity } } }),
+      null, { skipHistory: true }
+    );
+  }, [updateState]);
+
+  const setBackgroundVisible = useCallback((visible) => {
+    updateState(
+      prev => ({ ...prev, map: { ...prev.map, background: { ...prev.map.background, visible } } }),
+      null, { skipHistory: true }
+    );
+  }, [updateState]);
+
+  /**
    * SNAPSHOTS
    */
   const saveSnapshot = useCallback((name) => {
@@ -635,6 +667,10 @@ export const useEncounterState = () => {
     clearMapDrawing,
     setFogCell,
     clearFog,
+    setMapBackground,
+    clearMapBackground,
+    setBackgroundOpacity,
+    setBackgroundVisible,
     saveSnapshot,
     loadSnapshot,
     deleteSnapshot,

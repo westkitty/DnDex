@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MousePointer2, Pencil, Eraser, Move, Maximize, ZoomIn, ZoomOut, RotateCcw, Trash2, Map as MapIcon, Grid3X3, Layers, Eye, EyeOff } from 'lucide-react';
+import { MousePointer2, Pencil, Eraser, Move, Maximize, ZoomIn, ZoomOut, RotateCcw, Trash2, Map as MapIcon, Grid3X3, Layers, Eye, EyeOff, ImagePlus, SlidersHorizontal, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -41,7 +41,7 @@ for (let i = 0; i <= 228; i++) {
 }
 
 const MapDisplay = ({ encounter }) => {
-  const { state, updateMap, updateToken, commitTerrain, placeObject, applyTemplate, clearMap, commitDrawing, clearMapDrawing, setFogCell, clearFog } = encounter;
+  const { state, updateMap, updateToken, commitTerrain, placeObject, applyTemplate, clearMap, commitDrawing, clearMapDrawing, setFogCell, clearFog, setMapBackground, clearMapBackground, setBackgroundOpacity, setBackgroundVisible } = encounter;
   const { entities, map } = state;
   const [tool, setTool] = useState('move'); // 'move', 'pencil', 'eraser', 'paint', 'stamp', 'fog'
   const [activeAsset, setActiveAsset] = useState('grass_lush');
@@ -53,6 +53,18 @@ const MapDisplay = ({ encounter }) => {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [isLoadingAssets, setIsLoadingAssets] = useState(true);
+  const [bgImage, setBgImage] = useState(null);
+  const [sketchesVisible, setSketchesVisible] = useState(true);
+  const [fogVisible, setFogVisible] = useState(true);
+
+  // Load background image object when dataUrl changes
+  useEffect(() => {
+    const dataUrl = map?.background?.dataUrl;
+    if (!dataUrl) { setBgImage(null); return; }
+    const img = new Image();
+    img.onload = () => setBgImage(img);
+    img.src = dataUrl;
+  }, [map?.background?.dataUrl]);
 
   // Hydrate asset cache
   useEffect(() => {
@@ -82,6 +94,14 @@ const MapDisplay = ({ encounter }) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw background image (bottom-most layer)
+    if (bgImage && map?.background?.visible !== false) {
+      ctx.save();
+      ctx.globalAlpha = map.background?.opacity ?? 1;
+      ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
 
     // Draw base terrain (tiled background)
     const baseTileImg = assetCache[map?.config?.baseTile || 'grass_lush'];
@@ -145,7 +165,7 @@ const MapDisplay = ({ encounter }) => {
     }
 
     // Draw tactical sketches
-    if (map?.drawing) {
+    if (sketchesVisible && map?.drawing) {
       map.drawing.forEach(path => {
         if (!path.points || path.points.length < 2) return;
         ctx.beginPath();
@@ -159,7 +179,7 @@ const MapDisplay = ({ encounter }) => {
       });
     }
 
-    if (currentPath && currentPath.points && currentPath.points.length > 1) {
+    if (sketchesVisible && currentPath && currentPath.points && currentPath.points.length > 1) {
       ctx.beginPath();
       ctx.strokeStyle = currentPath.color || '#6366f1';
       ctx.lineWidth = currentPath.size || 3;
@@ -169,7 +189,7 @@ const MapDisplay = ({ encounter }) => {
     }
 
     // Draw fog overlay
-    if (map?.fog && Object.keys(map.fog).length > 0) {
+    if (fogVisible && map?.fog && Object.keys(map.fog).length > 0) {
       ctx.save();
       ctx.fillStyle = 'rgba(0, 0, 0, 0.78)';
       Object.keys(map.fog).forEach(coord => {
@@ -178,7 +198,7 @@ const MapDisplay = ({ encounter }) => {
       });
       ctx.restore();
     }
-  }, [map?.drawing, map?.terrain, map?.objects, map?.config, map?.fog, currentPath, assetCache, showGrid, pendingTiles]);
+  }, [map?.drawing, map?.terrain, map?.objects, map?.config, map?.fog, map?.background, bgImage, currentPath, assetCache, showGrid, pendingTiles, sketchesVisible, fogVisible]);
 
   const view = map?.view || { x: 0, y: 0, zoom: 1 };
 
@@ -465,6 +485,91 @@ const MapDisplay = ({ encounter }) => {
             </div>
 
             <div className="flex flex-col gap-8 overflow-y-auto pr-2 custom-scrollbar flex-1">
+              {/* Battle Map Background */}
+              <section>
+                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Battle Map</h4>
+                {map?.background?.dataUrl ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="relative rounded-xl overflow-hidden border border-white/10 aspect-video bg-black/40">
+                      <img src={map.background.dataUrl} alt="Battle map" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => clearMapBackground()}
+                        className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-rose-600/80 rounded-lg text-slate-300 hover:text-white transition-all"
+                        title="Remove background"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                      <input
+                        type="range" min="0" max="1" step="0.05"
+                        value={map.background.opacity ?? 1}
+                        onChange={(e) => setBackgroundOpacity(parseFloat(e.target.value))}
+                        className="flex-1 accent-indigo-500 h-1"
+                      />
+                      <span className="text-[9px] font-bold text-slate-500 w-7 text-right">
+                        {Math.round((map.background.opacity ?? 1) * 100)}%
+                      </span>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <button
+                        onClick={() => setBackgroundVisible(!(map.background.visible ?? true))}
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        {map.background.visible !== false
+                          ? <Eye className="w-3.5 h-3.5 text-indigo-400" />
+                          : <EyeOff className="w-3.5 h-3.5 text-slate-600" />}
+                      </button>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {map.background.visible !== false ? 'Background visible' : 'Background hidden'}
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center gap-3 cursor-pointer group p-4 rounded-xl border border-dashed border-white/10 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all">
+                    <ImagePlus className="w-8 h-8 text-slate-600 group-hover:text-indigo-400 transition-colors" />
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors block">Upload Battle Map</span>
+                      <span className="text-[9px] text-slate-600 uppercase tracking-tighter font-black">PNG · WEBP · JPEG · SVG</span>
+                    </div>
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setMapBackground(ev.target.result);
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }} />
+                  </label>
+                )}
+              </section>
+
+              {/* Layer Visibility */}
+              <section>
+                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Layer Visibility</h4>
+                <div className="flex flex-col gap-1">
+                  {[
+                    { label: 'Fog of War', visible: fogVisible, toggle: () => setFogVisible(v => !v), color: 'text-slate-400' },
+                    { label: 'Tactical Sketches', visible: sketchesVisible, toggle: () => setSketchesVisible(v => !v), color: 'text-indigo-300' },
+                    { label: 'Tactical Grid', visible: showGrid, toggle: () => setShowGrid(v => !v), color: 'text-slate-400' },
+                    { label: 'Background Image', visible: map?.background?.visible !== false, toggle: () => setBackgroundVisible(!(map?.background?.visible ?? true)), color: 'text-amber-400', disabled: !map?.background?.dataUrl },
+                  ].map(({ label, visible, toggle, color, disabled }) => (
+                    <button
+                      key={label}
+                      onClick={toggle}
+                      disabled={disabled}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      {visible
+                        ? <Eye className={cn('w-3.5 h-3.5', color)} />
+                        : <EyeOff className="w-3.5 h-3.5 text-slate-700" />}
+                      <span className={cn('text-[10px] font-bold', visible ? color : 'text-slate-600')}>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               {/* Templates */}
               <section>
                 <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Scene Templates</h4>
