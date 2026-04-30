@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MousePointer2, Pencil, Eraser, Move, Maximize, ZoomIn, ZoomOut, RotateCcw, Trash2, Map as MapIcon } from 'lucide-react';
+import { MousePointer2, Pencil, Eraser, Move, Maximize, ZoomIn, ZoomOut, RotateCcw, Trash2, Map as MapIcon, Grid3X3, Layers, Eye, EyeOff } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -41,15 +41,18 @@ for (let i = 0; i <= 228; i++) {
 }
 
 const MapDisplay = ({ encounter }) => {
-  const { state, updateMap, updateToken, placeTile, placeObject, applyTemplate, clearMap } = encounter;
+  const { state, updateMap, updateToken, commitTerrain, placeObject, applyTemplate, clearMap, commitDrawing, clearMapDrawing, setFogCell, clearFog } = encounter;
   const { entities, map } = state;
-  const [tool, setTool] = useState('move'); // 'move', 'pencil', 'eraser', 'paint', 'stamp'
+  const [tool, setTool] = useState('move'); // 'move', 'pencil', 'eraser', 'paint', 'stamp', 'fog'
   const [activeAsset, setActiveAsset] = useState('grass_lush');
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPath, setCurrentPath] = useState(null);
+  const [pendingTiles, setPendingTiles] = useState({});
+  const [fogMode, setFogMode] = useState('hide'); // 'hide' | 'reveal'
   const [assetCache, setAssetCache] = useState({});
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(true);
 
   // Hydrate asset cache
   useEffect(() => {
@@ -65,6 +68,7 @@ const MapDisplay = ({ encounter }) => {
       });
       await Promise.all(promises);
       setAssetCache(cache);
+      setIsLoadingAssets(false);
     };
     loader();
   }, []);
@@ -114,6 +118,15 @@ const MapDisplay = ({ encounter }) => {
       });
     }
 
+    // Draw pending tiles (buffered during active paint stroke, not yet committed)
+    Object.entries(pendingTiles).forEach(([coord, assetId]) => {
+      const [gx, gy] = coord.split(',').map(Number);
+      const img = assetCache[assetId];
+      if (img) {
+        ctx.drawImage(img, gx * GRID_SIZE, gy * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+      }
+    });
+
     // Draw objects
     if (map?.objects) {
       map.objects.forEach(obj => {
@@ -154,7 +167,18 @@ const MapDisplay = ({ encounter }) => {
       currentPath.points.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
     }
-  }, [map?.drawing, map?.terrain, map?.objects, map?.config, currentPath, assetCache, showGrid]);
+
+    // Draw fog overlay
+    if (map?.fog && Object.keys(map.fog).length > 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.78)';
+      Object.keys(map.fog).forEach(coord => {
+        const [gx, gy] = coord.split(',').map(Number);
+        ctx.fillRect(gx * GRID_SIZE, gy * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+      });
+      ctx.restore();
+    }
+  }, [map?.drawing, map?.terrain, map?.objects, map?.config, map?.fog, currentPath, assetCache, showGrid, pendingTiles]);
 
   const view = map?.view || { x: 0, y: 0, zoom: 1 };
 
@@ -183,12 +207,18 @@ const MapDisplay = ({ encounter }) => {
 
     if (tool === 'paint') {
       setIsDrawing('paint');
-      placeTile(gx, gy, activeAsset);
+      setPendingTiles({ [`${gx},${gy}`]: activeAsset });
       return;
     }
 
     if (tool === 'stamp') {
       placeObject(activeAsset, pos.x / GRID_SIZE, pos.y / GRID_SIZE);
+      return;
+    }
+
+    if (tool === 'fog') {
+      setIsDrawing('fog');
+      setFogCell(gx, gy, fogMode === 'hide');
       return;
     }
 
@@ -222,7 +252,14 @@ const MapDisplay = ({ encounter }) => {
     if (isDrawing === 'paint') {
       const gx = Math.floor(pos.x / GRID_SIZE);
       const gy = Math.floor(pos.y / GRID_SIZE);
-      placeTile(gx, gy, activeAsset);
+      setPendingTiles(prev => ({ ...prev, [`${gx},${gy}`]: activeAsset }));
+      return;
+    }
+
+    if (isDrawing === 'fog') {
+      const gx = Math.floor(pos.x / GRID_SIZE);
+      const gy = Math.floor(pos.y / GRID_SIZE);
+      setFogCell(gx, gy, fogMode === 'hide');
       return;
     }
 
@@ -245,23 +282,38 @@ const MapDisplay = ({ encounter }) => {
 
   const handleMouseUp = () => {
     if (!isDrawing) return;
-    
-    if (isDrawing === 'pan' || isDrawing === 'paint') {
+
+    if (isDrawing === 'pan') {
       setIsDrawing(false);
       setCurrentPath(null);
       return;
     }
 
+    if (isDrawing === 'paint') {
+      setIsDrawing(false);
+      if (Object.keys(pendingTiles).length > 0) {
+        commitTerrain(pendingTiles);
+      }
+      setPendingTiles({});
+      return;
+    }
+
+    if (isDrawing === 'fog') {
+      setIsDrawing(false);
+      return;
+    }
+
+    // Pencil / eraser stroke complete — commit as single history entry
     setIsDrawing(false);
-    updateMap({
-      drawing: [...(map?.drawing || []), currentPath]
-    });
+    if (currentPath && currentPath.points && currentPath.points.length > 1) {
+      commitDrawing(currentPath);
+    }
     setCurrentPath(null);
   };
 
   const clearDrawing = () => {
     if (confirm("Sanitize battlefield? This will remove all tactical sketches.")) {
-      updateMap({ drawing: [] });
+      clearMapDrawing();
     }
   };
 
@@ -270,6 +322,24 @@ const MapDisplay = ({ encounter }) => {
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-obsidian-950)] relative overflow-hidden rounded-[2.5rem] border border-white/5 shadow-inner">
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isLoadingAssets && (
+          <motion.div 
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--color-obsidian-950)]"
+          >
+             <div className="relative w-24 h-24 mb-6">
+                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20" />
+                <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 animate-spin" />
+                <MapIcon className="absolute inset-0 m-auto w-8 h-8 text-indigo-400 opacity-50" />
+             </div>
+             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] animate-pulse">Hydrating Tactical Assets</span>
+             <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-2">Kenney Textures Engine v1.0</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Now Acting HUD Overlay */}
       <AnimatePresence>
         {activeEntity && (
@@ -317,30 +387,60 @@ const MapDisplay = ({ encounter }) => {
             icon={<Maximize className="w-5 h-5" />} 
             label="Object Stamp"
           />
-          <ToolButton 
-            active={tool === 'pencil'} 
-            onClick={() => setTool('pencil')} 
-            icon={<Pencil className="w-5 h-5" />} 
+          <ToolButton
+            active={tool === 'pencil'}
+            onClick={() => setTool('pencil')}
+            icon={<Pencil className="w-5 h-5" />}
             label="Tactical Sketch"
           />
-          <ToolButton 
-            active={!showGrid} 
-            onClick={() => setShowGrid(!showGrid)} 
-            icon={<Maximize className="w-5 h-5" />} 
-            label="Toggle Grid"
+          <ToolButton
+            active={tool === 'fog'}
+            onClick={() => setTool('fog')}
+            icon={<Eye className="w-5 h-5" />}
+            label="Fog of War"
+          />
+          {tool === 'fog' && (
+            <button
+              onClick={() => setFogMode(prev => prev === 'hide' ? 'reveal' : 'hide')}
+              title={fogMode === 'hide' ? 'Switch to Reveal' : 'Switch to Hide'}
+              className="p-3 rounded-2xl transition-all duration-200 flex items-center justify-center text-slate-500 hover:bg-white/5"
+            >
+              {fogMode === 'hide'
+                ? <EyeOff className="w-4 h-4 text-rose-400" />
+                : <Eye className="w-4 h-4 text-emerald-400" />
+              }
+            </button>
+          )}
+          <ToolButton
+            active={showGrid}
+            onClick={() => setShowGrid(!showGrid)}
+            icon={<Grid3X3 className={cn("w-5 h-5", showGrid ? "text-indigo-400" : "text-slate-600")} />}
+            label="Toggle Tactical Grid"
+          />
+          <ToolButton
+            active={false}
+            onClick={clearDrawing}
+            icon={<Layers className="w-5 h-5 text-amber-500" />}
+            label="Purge Sketches"
           />
         </div>
 
         <div className="glass-dark p-2 rounded-[1.5rem] flex flex-col gap-2 border border-white/10 shadow-2xl">
-          <ToolButton 
-            active={false} 
+          <ToolButton
+            active={false}
             onClick={() => {
               if (confirm("Sanitize battlefield? This will remove all tiles and objects.")) {
                 clearMap();
               }
-            }} 
-            icon={<Trash2 className="w-5 h-5 text-red-400" />} 
+            }}
+            icon={<Trash2 className="w-5 h-5 text-red-400" />}
             label="Clear Battlefield"
+          />
+          <ToolButton
+            active={false}
+            onClick={clearFog}
+            icon={<Eye className="w-5 h-5 text-slate-500" />}
+            label="Lift All Fog"
           />
         </div>
       </div>
@@ -424,10 +524,16 @@ const MapDisplay = ({ encounter }) => {
                   if (file) {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                      // Logic to add to custom assets
                       const customId = `custom_${Date.now()}`;
                       ASSETS[customId] = ev.target.result;
-                      setActiveAsset(customId);
+                      
+                      // Hydrate cache immediately for custom asset
+                      const img = new Image();
+                      img.src = ev.target.result;
+                      img.onload = () => {
+                        setAssetCache(prev => ({ ...prev, [customId]: img }));
+                        setActiveAsset(customId);
+                      };
                     };
                     reader.readAsDataURL(file);
                   }
@@ -479,7 +585,7 @@ const MapDisplay = ({ encounter }) => {
             const pos = map?.tokens?.[entity.id] || { x: 200 + (index * 60), y: 200 };
             return (
               <Token 
-                key={`${entity.id}-${index}`}
+                key={entity.id}
                 entity={entity}
                 pos={pos}
                 onMove={(newPos, isFinal) => updateToken(entity.id, newPos, isFinal)}
