@@ -215,7 +215,7 @@ App Entry (main.jsx)
   - `setBackgroundOpacity(opacity)` — opacity slider (skipHistory)
   - `setBackgroundVisible(visible)` — eye toggle (skipHistory)
 - **Local UI state in MapDisplay** (not persisted): `tool`, `activeAsset`, `isDrawing`, `currentPath`, `pendingTiles`, `fogMode`, `assetCache`, `paletteOpen`, `showGrid`, `isLoadingAssets`, `bgImage`, `sketchesVisible`, `fogVisible`.
-- **Assets**: Kenney RPG tiles `rpgTile000–228` from `public/assets/tiles/`. Custom tile uploads injected into ASSETS object at runtime (not persisted across reload). Battle map background stored as DataURL in `map.background.dataUrl` (persisted).
+- **Assets**: Kenney RPG tiles `rpgTile000–228` from `public/assets/tiles/`. Custom tactical assets persist in encounter state under `map.config.customAssets` and are hydrated into the map asset registry/cache at runtime. Battle map background is stored as DataURL in `map.background.dataUrl`.
 
 ### Feature: Battlemaster Layout
 - **Status**: Complete.
@@ -281,7 +281,7 @@ App Entry (main.jsx)
   - `fog` (Object\<`"x,y"` → true\>) — fogged grid cells
   - `background` ({dataUrl: string|null, opacity: number [0-1], visible: boolean}) — battle map image
   - `view` ({x, y, zoom}) — pan/zoom (skipHistory)
-  - `config` ({gridVisible, gridSize: 50, width: 30, height: 30, baseTile}) — scene config
+  - `config` ({gridVisible, gridSize: 50, width: 30, height: 30, baseTile, customAssets}) — scene config + persisted custom tactical asset registry
 
 ### `LogEntry`
 - **Fields**: `id`, `timestamp`, `message`, `type` ('damage'|'heal'|'info'), `subType` (damage type string), `round`.
@@ -312,7 +312,7 @@ App Entry (main.jsx)
 - **Strengths**: High information density, tactile combat feedback, multi-tab sync, full undo/redo.
 - **Weaknesses**:
   - `MapDisplay.jsx` is monolithic at 35 KB — mixes canvas rendering, event handling, tool logic, and palette UI.
-  - Custom tile uploads (non-background) are runtime-only and do not persist across reload.
+  - Custom assets are stored as DataURLs in encounter state (`map.config.customAssets`), which can increase saved-state size for heavy asset usage.
 
 ## Project Intentions
 
@@ -353,7 +353,7 @@ npm run build
 ```bash
 npx vitest run
 ```
-- Result: **19/19 passed** (Last verified 2026-04-30).
+- Result: **22/22 passed** (Last verified 2026-04-30).
 - Source: `src/hooks/useEncounterState.test.js`.
 - Coverage: entity CRUD, damage/healing, concentration alert generation, turn advancement, undo/redo, all map history actions (commitTerrain, commitDrawing, clearMapDrawing, placeObject, clearMap).
 
@@ -410,10 +410,11 @@ node scripts/smoke/battlemaster-dockable.mjs
 - **Severity**: Medium. Works correctly; cognitive load for developers.
 - **Suggested next step**: Extract palette sidebar to `MapPalette.jsx`, canvas draw loop to a custom hook, Token component to `MapToken.jsx`.
 
-### [KNOWN] Custom tile uploads do not persist
-- **Evidence**: `ASSETS` object is module-level. Custom tile DataURLs injected at runtime are lost on reload.
-- **Severity**: Low. Background image persists correctly (stored in state). Only per-tile custom overrides are ephemeral.
-- **Suggested next step**: Store custom tiles in `map.config.customAssets` alongside the background.
+### [KNOWN] Custom asset DataURL size growth
+- **Evidence**: Persisted custom tactical assets are stored in encounter state under `map.config.customAssets` as DataURLs.
+- **Severity**: Low/Medium depending on uploaded image count and size.
+- **Implication**: Large custom image sets can increase persisted state size and sync payload weight.
+- **Suggested next step**: Add optional image-size guidance/compression for custom asset uploads.
 
 ### [KNOWN] Lint: 0 errors, 2 warnings
 - **Evidence**: `npm run lint` output (2026-04-30).
@@ -436,9 +437,9 @@ node scripts/smoke/battlemaster-dockable.mjs
 - **Difficulty**: Medium.
 
 ### Improvement: Persist custom tile uploads
-- **Why it matters**: DMs who upload custom tiles lose them on reload.
-- **Suggested implementation**: Store custom tile DataURLs in `map.config.customAssets` (dict of id → dataUrl). Hydrate ASSETS from this on mount.
-- **Difficulty**: Small.
+- **Status**: Completed on 2026-04-30.
+- **What shipped**: Custom tactical assets now persist under `map.config.customAssets` and hydrate into map asset cache across reload/import.
+- **Follow-up**: Monitor state-size growth and consider optional compression/limits.
 
 ### Improvement: Bundle code splitting
 - **Why it matters**: 1921 kB initial bundle (392 kB gzip). Slow on first load over mobile/slow connections.
@@ -463,17 +464,17 @@ node scripts/smoke/battlemaster-dockable.mjs
 ## Current State Summary
 DnDex / DM Hub is a production-quality, feature-complete D&D 5e encounter manager. As of 2026-04-30:
 
-- **State machine**: Stable. 19/19 tests passing. Full undo/redo stack, IndexedDB persistence, multi-tab BroadcastChannel sync.
+- **State machine**: Stable. 22/22 tests passing. Full undo/redo stack, IndexedDB persistence, multi-tab BroadcastChannel sync.
 - **Combat engine**: Complete. Concentration saves, legendary actions/resistances, group damage, turn auto-advance, lair actions.
-- **Tactical map**: Complete. All layers (background image, terrain, objects, sketches, fog, tokens) are history-aware and undoable. Battle map background image upload fully implemented.
+- **Tactical map**: Complete. All layers (background image, terrain, objects, sketches, fog, tokens) are history-aware and undoable. Battle map background image upload and persisted custom tactical assets (`map.config.customAssets`) are implemented.
 - **Battlemaster layout**: Complete. Three-panel resizable/collapsible dashboard view purpose-built for live play.
 - **Bestiary**: Complete. 334 SRD monsters, searchable, deployable.
 - **Snapshots / Export / Import**: Complete.
 - **Headless smoke**: Committed script (`scripts/smoke/battlemaster-dockable.mjs`) passes 20 checks.
-- **Known non-blockers**: 2 lint warnings (`react-hooks/exhaustive-deps`), MapDisplay monolith, large bundle (PWA cached), custom tile uploads are session-only, optional visual verification of removed EntityCard damage-flash behavior.
+- **Known non-blockers**: 2 lint warnings (`react-hooks/exhaustive-deps`), MapDisplay monolith, large bundle (PWA cached), custom asset DataURL state-size growth risk, optional visual verification of removed EntityCard damage-flash behavior.
 - **No known blockers or crashes.**
 
-The codebase is ready to extend. The next natural improvements are MapDisplay refactor (extract palette/token), custom tile persistence, and bundle code splitting.
+The codebase is ready to extend. The next natural improvements are MapDisplay refactor (extract palette/token), bundle code splitting, and a docs-first hook warning investigation.
 
 ## Open Questions
 - Should token avatar images (portrait uploads per entity) be added?
@@ -1937,3 +1938,51 @@ git status --short
   - `Fact:` Commit included `/Users/andrew/Projects/DM_Hub/src/utils/combatEngine.js` as a newly tracked file because it was present as untracked local source and `git add src` was used during feature commit.
 - `State After Completion:` Custom tactical asset persistence is live and pushed; repo parity verified.
 - `Next Step / Handoff:` If requested, run a narrow follow-up to confirm whether `src/utils/combatEngine.js` inclusion was intended, then optionally investigate the two remaining hook warnings in a docs-only or low-risk patch.
+
+### Entry 61 - Custom Asset Persistence Documentation Reconciliation (2026-04-30)
+- `Summary:` Reconciled stale stable Bible sections to match shipped custom tactical asset persistence and current validation state.
+- `Reason / Intent:` Keep authoritative non-ledger sections aligned with the implemented/pushed feature state after Entry 59/60.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git log --oneline -10
+git rev-parse HEAD
+git rev-parse origin/main
+rg -n "custom tile uploads|custom assets|customAssets|Persist custom tile|session-only|22/22|19/19|Current State Summary|Future Work Map|Risks|MapState|Setup, Run, Build, and Test Commands" DnDex_Bible.md
+rg -n "combatEngine.js.*untracked|untracked.*combatEngine|src/utils/combatEngine.js" DnDex_Bible.md
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+node scripts/smoke/battlemaster-dockable.mjs
+node scripts/smoke/battlemaster-dockable.mjs
+node scripts/smoke/battlemaster-dockable.mjs
+```
+- `Command Intent:` Verify remote parity; reconcile stale stable sections; re-validate build/test/lint/smoke after docs-only update.
+- `Outputs Generated:`
+  - `Fact:` Baseline parity confirmed before edits: `HEAD == origin/main` at `7193d50b2d2af1c506b361d56ac3fb75d5aa37bc`.
+  - `Fact:` Stable sections updated to state that custom tactical assets persist via `map.config.customAssets`.
+  - `Fact:` `MapState.config` shape updated to include `customAssets`.
+  - `Fact:` Setup/Test section updated from `19/19` to `22/22`.
+  - `Fact:` Active risk updated from “custom tiles are session-only” to DataURL state-size growth caveat.
+  - `Fact:` Future Work entry for custom tile persistence marked completed; remaining items retained.
+  - `Fact:` Current State Summary updated to `22/22` and persisted custom asset status.
+  - `Fact:` `src/utils/combatEngine.js` is intentionally tracked now and remains a normal tracked dependency of `useEncounterState.js`.
+  - `Fact:` Validation results:
+    - `npm run build`: PASS
+    - `npx vitest run`: PASS (`22/22`)
+    - `npm run lint`: PASS (`0 errors, 2 warnings`)
+    - `node scripts/smoke/battlemaster-dockable.mjs`: intermittent failures observed on initial runs, final rerun PASS (`20 checks`)
+- `Decisions:`
+  - `Fact:` Kept this pass documentation-only; no code-path changes beyond Bible content.
+- `Bugs / Blockers:`
+  - `Fact:` No blocker for docs reconciliation; smoke harness remains intermittently flaky in panel/modal shortcut checks.
+- `Correction:`
+  - `Fact:` Removed stale stable claims that custom tiles are session-only and that tests are `19/19`.
+- `State After Completion:` Stable Bible sections now match implemented custom asset persistence and current validation baselines.
+- `Next Step / Handoff:` Next engineering pass should be either bundle code splitting or docs-first investigation of the two remaining hook dependency warnings.
