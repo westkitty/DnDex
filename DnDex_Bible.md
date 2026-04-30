@@ -1986,3 +1986,34 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` Removed stale stable claims that custom tiles are session-only and that tests are `19/19`.
 - `State After Completion:` Stable Bible sections now match implemented custom asset persistence and current validation baselines.
 - `Next Step / Handoff:` Next engineering pass should be either bundle code splitting or docs-first investigation of the two remaining hook dependency warnings.
+
+### Entry 62 - Claude Takeover Prompt Artifact (2026-04-30)
+- `Summary:` Created an exhaustive successor-grade Claude takeover prompt artifact for low-quota handoff continuity.
+- `Reason / Intent:` Preserve momentum while minimizing quota burn by providing a self-contained, operationally strict takeover document.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/docs/handoffs/CLAUDE_TAKEOVER_PROMPT_2026-04-30.md` (new)
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git rev-parse HEAD
+git rev-parse origin/main
+git log --oneline -6
+tail -n 120 DnDex_Bible.md
+mkdir -p docs/handoffs
+```
+- `Command Intent:` Confirm baseline parity and generate a single, paste-ready Claude takeover prompt without feature/code changes.
+- `Outputs Generated:`
+  - `Fact:` Created handoff prompt file at `/Users/andrew/Projects/DM_Hub/docs/handoffs/CLAUDE_TAKEOVER_PROMPT_2026-04-30.md`.
+  - `Fact:` Prompt includes repository context, current validated state, safety rules, validation flow, Bible discipline, git discipline, known non-blockers, and ranked next-work options.
+- `Decisions:`
+  - `Fact:` Per instruction, avoided product feature work, refactors, warning investigation, and expensive validations.
+- `Bugs / Blockers:`
+  - `Fact:` No blockers in this docs-only artifact pass.
+- `Correction:`
+  - `Fact:` None.
+- `State After Completion:` Successor prompt is in-repo and ready for Claude handoff.
+- `Next Step / Handoff:` Commit/push docs artifact and verify `HEAD == origin/main`.
