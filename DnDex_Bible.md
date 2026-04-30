@@ -1904,3 +1904,36 @@ node scripts/smoke/battlemaster-dockable.mjs
   - `Fact:` Smoke evidence recorded with both initial failure and successful rerun for traceability.
 - `State After Completion:` Feature implementation validated and ready to commit/push.
 - `Next Step / Handoff:` Commit and push `feat: persist custom tactical map assets`; then append commit/push verification entry.
+
+### Entry 60 - Custom Tactical Asset Persistence Commit and Push (2026-04-30)
+- `Summary:` Committed and pushed persisted custom tactical map asset feature.
+- `Reason / Intent:` Complete highest-value safe improvement and leave repository in validated, handoff-ready state.
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js`
+  - `/Users/andrew/Projects/DM_Hub/src/components/MapDisplay.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.test.js`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git add DnDex_Bible.md src
+git commit -m "feat: persist custom tactical map assets"
+git push origin main
+git rev-parse HEAD
+git rev-parse origin/main
+git status --short
+```
+- `Command Intent:` Publish the custom asset persistence implementation and verify remote parity.
+- `Outputs Generated:`
+  - `Fact:` Commit created: `9915463520a3a31867a1848bc97cd35dc5fc13f8`.
+  - `Fact:` Push succeeded: `2cd3247..9915463  main -> main`.
+  - `Fact:` `HEAD == origin/main` at `9915463520a3a31867a1848bc97cd35dc5fc13f8` after push.
+- `Decisions:`
+  - `Fact:` Stopped after primary mission completion to conserve quota; optional warning investigation deferred.
+- `Bugs / Blockers:`
+  - `Fact:` No blocking validation failures for the custom-asset persistence feature.
+- `Correction:`
+  - `Fact:` Commit included `/Users/andrew/Projects/DM_Hub/src/utils/combatEngine.js` as a newly tracked file because it was present as untracked local source and `git add src` was used during feature commit.
+- `State After Completion:` Custom tactical asset persistence is live and pushed; repo parity verified.
+- `Next Step / Handoff:` If requested, run a narrow follow-up to confirm whether `src/utils/combatEngine.js` inclusion was intended, then optionally investigate the two remaining hook warnings in a docs-only or low-risk patch.
