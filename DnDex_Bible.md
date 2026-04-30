@@ -1804,3 +1804,38 @@ grep -n "custom tile\|custom asset\|ASSETS\|MapDisplay\|Known non-blockers\|Curr
   - `Fact:` None.
 - `State After Completion:` Baseline verified and scope locked to custom tile persistence.
 - `Next Step / Handoff:` Inspect current custom asset upload flow in `MapDisplay.jsx` and map config/action handling in `useEncounterState.js`.
+
+### Entry 57 - Custom Tile Persistence Flow Inspection and Plan (2026-04-30)
+- `Summary:` Completed inspection-only analysis of current custom tactical asset upload flow and map state architecture.
+- `Reason / Intent:` Establish a safe, minimal implementation plan for persisted custom assets before code edits.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/MapDisplay.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+grep -n "ASSETS\|assetCache\|custom\|upload\|FileReader\|placeObject\|activeAsset\|setMapBackground" src/components/MapDisplay.jsx
+grep -n "INITIAL_STATE\|map:\|config:\|importState\|exportState\|updateMap\|placeObject\|applyTemplate" src/hooks/useEncounterState.js
+sed -n '1,260p' src/components/MapDisplay.jsx
+sed -n '260,620p' src/components/MapDisplay.jsx
+sed -n '1,260p' src/hooks/useEncounterState.js
+```
+- `Command Intent:` Identify current custom asset ID assignment, cache hydration, and persistence boundaries.
+- `Outputs Generated:`
+  - `Fact:` Custom tile upload in `MapDisplay.jsx` currently creates `custom_<timestamp>` IDs and writes DataURLs into module-level `ASSETS` only.
+  - `Fact:` `assetCache` is hydrated from `Object.entries(ASSETS)` once on mount, so uploaded custom tiles are not state-persisted and are lost after reload.
+  - `Fact:` Terrain/object layers reference `assetId` strings consistently (`terrain` values and `objects[].assetId`), so missing registry entries cause invisible map elements after reload.
+  - `Fact:` `INITIAL_STATE.map.config` currently has no `customAssets` registry.
+  - `Fact:` `importState` merges `map` shallowly (`map: { ...INITIAL_STATE.map, ...(imported.map || {}) }`) and would preserve nested `map.config.customAssets` if present in imported state.
+- `Decisions:`
+  - `Fact:` Implement persisted registry at `state.map.config.customAssets` with narrow encounter actions (`addCustomMapAsset`, `removeCustomMapAsset`).
+  - `Fact:` Update `MapDisplay` to hydrate from base assets + persisted custom assets instead of module-only custom injection.
+  - `Fact:` Keep all pan/zoom/token/canvas semantics unchanged.
+- `Bugs / Blockers:`
+  - `Fact:` No blocker found for this scoped implementation.
+- `Correction:`
+  - `Fact:` None.
+- `State After Completion:` Inspection done; implementation path is clear and low-risk.
+- `Next Step / Handoff:` Implement persisted custom asset state/actions and map hydration wiring.
