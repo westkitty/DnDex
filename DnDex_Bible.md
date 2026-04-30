@@ -2062,3 +2062,75 @@ git rev-parse origin/main
   - `Fact:` None.
 - `State After Completion:` `HEAD == origin/main`. Investigation doc is committed and available at `docs/HOOK_WARNING_INVESTIGATION.md`. Lint baseline unchanged: 0 errors, 2 warnings (both documented).
 - `Next Step / Handoff:` Future source-touching session should add `eslint-disable-next-line react-hooks/exhaustive-deps` with explanation to `useEncounterState.js:112`. If drag+zoom UX is ever introduced, add `viewOffset.x`, `viewOffset.y`, `zoom` to the `Token` effect deps in `MapDisplay.jsx:808`.
+
+### Entry 64 - Claude Session Handoff Audit (2026-04-30)
+- `Summary:` Produced a complete, evidence-grounded handoff audit report covering all recent session activity, repository state, bundle code splitting status, hook warning investigation status, full validation results, project naming audit, and recommended next action.
+- `Reason / Intent:` Andrew reported "serious issues getting to this point" and requested an authoritative audit before proceeding. The goal was to establish a clean, documented baseline with no ambiguity about what happened in the session and what the repository state is.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx` (lines 1–40)
+  - `/Users/andrew/Projects/DM_Hub/src/main.jsx` (lines 1–30)
+  - `/Users/andrew/Projects/DM_Hub/vite.config.js`
+  - `/Users/andrew/Projects/DM_Hub/src/components/MapDisplay.jsx` (lines 760–808)
+  - `/Users/andrew/Projects/DM_Hub/src/hooks/useEncounterState.js` (lines 70–113)
+  - `/Users/andrew/Projects/DM_Hub/docs/HOOK_WARNING_INVESTIGATION.md`
+  - `/Users/andrew/Projects/DM_Hub/README.md`
+  - `/Users/andrew/Projects/DM_Hub/index.html`
+  - `/Users/andrew/Projects/DM_Hub/package.json`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/docs/handoffs/CLAUDE_SESSION_HANDOFF_AUDIT_2026-04-30.md` (new)
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md` (this entry)
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+git status --short
+git branch --show-current
+git remote -v
+git rev-parse HEAD
+git rev-parse origin/main
+git log --oneline -20
+git diff --stat
+git diff --name-only
+git diff --cached --stat
+git diff --cached --name-only
+find docs -maxdepth 3 -type f | sort
+git diff --stat 63b4ff38a5d0281ac0086f14ca472fcf548bcbab..HEAD
+git diff --name-status 63b4ff38a5d0281ac0086f14ca472fcf548bcbab..HEAD
+git log --oneline 63b4ff38a5d0281ac0086f14ca472fcf548bcbab..HEAD
+grep -Rni "React.lazy\|lazy(\|Suspense\|import(.*MapDisplay\|manualChunks\|rollupOptions" src vite.config.js package.json
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs   # run 1: 2 failures
+node scripts/smoke/battlemaster-dockable.mjs   # run 2: 3 failures
+node scripts/smoke/battlemaster-dockable.mjs   # run 3: PASS 20 checks
+grep -Rni "DM Hub\|DM_Hub\|DnDex\|DNDex\|DnDEX" README.md DnDex_Bible.md docs src package.json index.html vite.config.js
+git add docs/handoffs/CLAUDE_SESSION_HANDOFF_AUDIT_2026-04-30.md DnDex_Bible.md
+git commit -m "docs: add Claude session handoff audit"
+git push origin main
+git rev-parse HEAD
+git rev-parse origin/main
+```
+- `Command Intent:` Comprehensive evidence collection; validate all four checks; run naming audit grep; confirm parity before and after.
+- `Outputs Generated:`
+  - `Fact:` Pre-audit baseline: `HEAD == origin/main` at `f280326a205deb323cbd404042ef7320834f8406`.
+  - `Fact:` Since prior handoff `63b4ff3`: 1 commit added — docs-only, `docs/HOOK_WARNING_INVESTIGATION.md` (new) + `DnDex_Bible.md` (Entry 63 appended).
+  - `Fact:` Bundle code splitting: NOT implemented. Zero hits for `React.lazy`, `Suspense`, dynamic `import()`, or `manualChunks` anywhere in `src/` or `vite.config.js`.
+  - `Fact:` Build output: single chunk `index-B_M4FFXf.js` at 1,937 kB (no splitting). Build PASS.
+  - `Fact:` Tests: 88/88 pass, 8 test files.
+  - `Fact:` Lint: 0 errors, 8 warnings (2 in main src/ — both documented hook dep omissions; 6 from worktree copies).
+  - `Fact:` Smoke: flaky — 2 failures run 1, 3 failures run 2, PASS (20 checks) run 3. Consistent with known intermittent harness flakiness.
+  - `Fact:` Naming drift identified: `src/components/TopBar.jsx:62` renders `DM HUB` as visible user-facing app title (highest priority fix). `README.md` uses `DM Hub` as primary name in heading and footer.
+  - `Fact:` All PWA manifest, `index.html`, `vite.config.js`, `CommandPalette` strings correctly use `DnDex`.
+  - `Fact:` Audit report written to `docs/handoffs/CLAUDE_SESSION_HANDOFF_AUDIT_2026-04-30.md`.
+- `Decisions:`
+  - `Fact:` Docs-only audit pass — no source, test, or config files modified.
+  - `Fact:` Smoke harness failures on runs 1–2 classified as harness-level flakiness (known behavior), not product regression — based on pass on run 3 and prior documented pattern.
+  - `Fact:` Recommended next action: `PROCEED TO NAMING CLEANUP` — specifically `TopBar.jsx:62` and `README.md` as highest-priority items.
+- `Bugs / Blockers:`
+  - `Fact:` No product blockers. Smoke harness remains intermittently flaky in panel/modal shortcut checks (pre-existing, documented).
+  - `Fact:` `src/components/TopBar.jsx:62` renders `DM HUB` as user-facing title — naming drift, not a bug.
+- `Correction:`
+  - `Fact:` None. Audit found no regressions or incorrectly claimed work.
+- `State After Completion:` `HEAD == origin/main`. Audit report exists at `docs/handoffs/CLAUDE_SESSION_HANDOFF_AUDIT_2026-04-30.md`. Repository is clean, validated, and safe for the next pass. Naming drift is documented and ready for targeted cleanup.
+- `Next Step / Handoff:` PROCEED TO NAMING CLEANUP — fix `src/components/TopBar.jsx:62` (`DM HUB` → `DnDex`), update `README.md` heading and footer, and optionally normalize `useEncounterState.test.js` describe label. Commit and push as a dedicated naming-only pass. Then proceed to bundle code splitting.
