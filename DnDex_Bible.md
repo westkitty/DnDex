@@ -2381,3 +2381,98 @@ node scripts/smoke/battlemaster-dockable.mjs
 - `State After Completion:` Launcher app is installed in `/Applications` and pinned to the Dock. Product source unchanged. Repository ready for commit.
 - `Remaining Risks:`
   - None at this time.
+
+### Entry 69 - D20 Starsilk Gateway Animation and UI Readability Repair Pass (2026-04-30)
+- `Summary:` Repaired the mandatory gateway visual regression by replacing SVG/icon-style portal rendering with the real local MP4 gateway animation and applied targeted readability/visibility CSS fixes.
+- `Reason / Intent:` The prior gateway looked like a recreated badge/icon and failed visual intent; this pass restores the intended D20 Starsilk animated threshold and improves low-contrast controls.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/src/components/gateway/GatewaySplash.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/index.css`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`
+- `Files Changed:`
+  - `/Users/andrew/Projects/DM_Hub/src/components/gateway/GatewaySplash.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/index.css`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+- `Commands Run:`
+```bash
+cd /Users/andrew/Projects/DM_Hub
+pwd
+git status --short
+git branch --show-current
+git rev-parse HEAD
+git rev-parse origin/main
+git log --oneline -8
+git diff --stat
+git diff --name-only
+git diff -- src/components/gateway/GatewaySplash.jsx src/index.css src/App.jsx scripts/smoke/battlemaster-dockable.mjs DnDex_Bible.md
+ls -lh assets/d20starsilk.mp4
+file assets/d20starsilk.mp4
+git ls-files assets/d20starsilk.mp4
+git status --short assets/d20starsilk.mp4
+python3 - <<'PY'
+from pathlib import Path
+p = Path('assets/d20starsilk.mp4')
+print('exists:', p.exists())
+print('size_bytes:', p.stat().st_size if p.exists() else None)
+PY
+ffprobe -v error -show_entries format=duration,size,format_name -show_streams assets/d20starsilk.mp4 || true
+sed -n '1,280p' DnDex_Bible.md
+tail -n 620 DnDex_Bible.md
+sed -n '1,560p' src/components/gateway/GatewaySplash.jsx
+sed -n '1,560p' src/index.css
+sed -n '1,440p' src/App.jsx
+sed -n '1,600p' scripts/smoke/battlemaster-dockable.mjs
+node -e "import('playwright').then(() => console.log('Playwright available')).catch((error) => { console.error(error.message); process.exit(1); })"
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+node /Users/andrew/Projects/DM_Hub/.tmp-dndex-capture-before.mjs
+node /Users/andrew/Projects/DM_Hub/.tmp-dndex-capture-after.mjs
+node /Users/andrew/Projects/DM_Hub/.tmp-dndex-capture-after-tools.mjs
+```
+- `Command Intent:` Recover actual disk state, validate the real animation asset, replace gateway implementation to MP4-first behavior, run full project validation, and capture headless visual artifacts.
+- `Outputs Generated:`
+  - `Fact:` Pre-task baseline had tracked dirty files from interrupted pass: `src/components/gateway/GatewaySplash.jsx`, `src/index.css`, and `scripts/smoke/battlemaster-dockable.mjs`.
+  - `Fact:` `HEAD == origin/main` at baseline (`ea2c6cc9a74e8120efc713c272a96a13dc37fec2`).
+  - `Fact:` Build PASS.
+  - `Fact:` Vitest PASS (`88/88`).
+  - `Fact:` Lint PASS (`0 errors, 8 warnings`); warnings are the known `exhaustive-deps` warnings (plus `.claude/worktrees` duplicates).
+  - `Fact:` Smoke PASS (`28 checks`).
+- `Animation Asset Findings:`
+  - `Fact:` Canonical animation asset exists at `/Users/andrew/Projects/DM_Hub/assets/d20starsilk.mp4`.
+  - `Fact:` Asset metadata: MP4 container, `2228340` bytes (~2.1 MB), `10.041667s`, `464x688`, H.264 video stream.
+  - `Fact:` Asset was **not tracked** at start (`?? assets/d20starsilk.mp4`) and is required by runtime import.
+  - `Fact:` Gateway now imports this file directly in React (`import gatewayVideo from '../../../assets/d20starsilk.mp4'`), so Vite fingerprints it into build output (`dist/assets/d20starsilk-*.mp4`).
+- `Before Screenshot Artifacts:`
+  - `/tmp/dndex-before-01-gateway.png`
+  - `Fact:` Additional before captures (`before-02/03/04`) were attempted but blocked by the pre-fix dismissal regression timing out while waiting for gateway detach.
+- `After Screenshot Artifacts:`
+  - `/tmp/dndex-after-01-gateway.png`
+  - `/tmp/dndex-after-02-after-entry.png`
+  - `/tmp/dndex-after-03-battlemaster.png`
+  - `/tmp/dndex-after-04-tools-open.png`
+- `Readability Fixes:`
+  - `Fact:` Increased dark-glass border contrast (`glass-dark` from `border-white/5` to `border-white/10`, slightly stronger background).
+  - `Fact:` Added targeted global button contrast overrides for low-visibility `text-slate-500`/`text-slate-400` button states.
+  - `Fact:` Increased weak hover visibility on `hover:bg-white/5` button patterns.
+  - `Fact:` Disabled buttons remain visibly present but muted (opacity + reduced saturation).
+- `Gateway Dismissal Fixes:`
+  - `Fact:` Replaced SVG-centric gateway with MP4-first portal implementation (`video` with `autoPlay`, `muted`, `loop`, `playsInline`, `preload="auto"`).
+  - `Fact:` Added guarded single-path `handleEnter` (`enteredRef`) so pointer/mouse/click/key activation all route through one robust entry path.
+  - `Fact:` Timer IDs are held in refs and cleared only on unmount; no effect dependency churn tied to animated values.
+  - `Fact:` Completion callback is scheduled directly from `handleEnter`, not from an effect that can reset under frequent renders.
+  - `Fact:` Added graceful video failure fallback panel while keeping enter affordance available.
+- `Decisions:`
+  - `Fact:` Kept gateway mandatory every app open.
+  - `Fact:` No persistence added (no `localStorage`, no IndexedDB, no session save of gateway dismissal).
+  - `Fact:` No onboarding work added.
+  - `Fact:` No encounter state mutations were introduced for gateway behavior.
+- `Bugs / Blockers:`
+  - `Fact:` Initial headless screenshot attempts failed while stale build output was being previewed after a CSS compile error; resolved by fixing CSS class misuse and rebuilding.
+- `Correction:`
+  - `Fact:` Entry 68 includes stale commit metadata (`Commit Hash: a6cddb7ec47ba261cd88c7be7e5ed47f96360e41`) that does not match repository history; actual `HEAD` at this pass baseline was `ea2c6cc9a74e8120efc713c272a96a13dc37fec2`. Recorded here append-only, without rewriting prior entry.
+- `State After Completion:` Gateway now uses the real D20 Starsilk MP4 and retains mandatory non-persistent behavior. Validation suite passes (build/test/lint/smoke). No onboarding, encounter-state, undo/redo, `useEncounterState.js`, or `MapDisplay.jsx` behavior changes were introduced.
+- `Next Step / Handoff:` Perform manual visual acceptance check on gateway feel/readability in Andrew’s normal runtime environment.
