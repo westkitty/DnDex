@@ -106,7 +106,8 @@ const DockablePanel = ({
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 truncate">{title}</h3>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="group flex items-center gap-1">
+          {/* Primary control — always visible */}
           <button
             aria-label={state.collapsed ? 'Expand Panel' : 'Collapse Panel'}
             title={state.collapsed ? 'Expand Panel' : 'Collapse Panel'}
@@ -115,44 +116,48 @@ const DockablePanel = ({
           >
             {state.collapsed ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
           </button>
-          {state.docked ? (
+
+          {/* Advanced controls — revealed on header hover or keyboard focus */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150">
+            {state.docked ? (
+              <button
+                aria-label="Undock Panel"
+                title="Undock Panel"
+                onClick={() => onUndock(id)}
+                disabled={layoutLocked}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                aria-label="Redock Panel"
+                title="Redock Panel"
+                onClick={() => onRedock(id)}
+                disabled={layoutLocked}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ArrowDownToLine className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
-              aria-label="Undock Panel"
-              title="Undock Panel"
-              onClick={() => onUndock(id)}
+              aria-label="Reset Position"
+              title="Reset Position"
+              onClick={() => onResetPosition(id)}
               disabled={layoutLocked}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              aria-label={state.minimized ? 'Restore Panel' : 'Minimize Panel'}
+              title={state.minimized ? 'Restore Panel' : 'Minimize Panel'}
+              onClick={() => (state.minimized ? onRestore(id) : onMinimize(id))}
               className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" />
             </button>
-          ) : (
-            <button
-              aria-label="Redock Panel"
-              title="Redock Panel"
-              onClick={() => onRedock(id)}
-              disabled={layoutLocked}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
-            >
-              <ArrowDownToLine className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <button
-            aria-label="Reset Position"
-            title="Reset Position"
-            onClick={() => onResetPosition(id)}
-            disabled={layoutLocked}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-          <button
-            aria-label={state.minimized ? 'Restore Panel' : 'Minimize Panel'}
-            title={state.minimized ? 'Restore Panel' : 'Minimize Panel'}
-            onClick={() => (state.minimized ? onRestore(id) : onMinimize(id))}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+          </div>
         </div>
       </header>
 

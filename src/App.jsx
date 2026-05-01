@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { useEncounterState } from './hooks/useEncounterState';
 import TopBar from './components/TopBar';
 import { WorkspaceProvider } from './components/workspace/WorkspaceProvider';
@@ -111,6 +111,9 @@ function AppContent() {
   const [view, setView] = useState(UI_VIEWS.BATTLEMASTER);
   const [rulesQuery, setRulesQuery] = useState('');
 
+  // Receives resetLayout from BattlemasterLayout so TopBar can trigger it
+  const resetLayoutRef = useRef(null);
+
   // Derived state
   const { state } = encounter;
   const activeEntity = useMemo(() => state.entities?.[state.turnIndex] ?? null, [state.entities, state.turnIndex]);
@@ -179,13 +182,14 @@ return (
           />
         </div>
 
-        <TopBar 
-          encounter={encounter} 
-          toggleRules={() => setActiveModal(prev => prev === UI_MODALS.RULES ? UI_MODALS.NONE : UI_MODALS.RULES)} 
+        <TopBar
+          encounter={encounter}
+          toggleRules={() => setActiveModal(prev => prev === UI_MODALS.RULES ? UI_MODALS.NONE : UI_MODALS.RULES)}
           toggleBestiary={() => setActiveModal(prev => prev === UI_MODALS.BESTIARY ? UI_MODALS.NONE : UI_MODALS.BESTIARY)}
           toggleSnapshots={() => setActiveModal(prev => prev === UI_MODALS.SNAPSHOTS ? UI_MODALS.NONE : UI_MODALS.SNAPSHOTS)}
           view={view}
           setView={setView}
+          onResetLayout={() => resetLayoutRef.current?.()}
         />
         
         <main className="flex flex-1 overflow-hidden relative z-10">
@@ -197,6 +201,7 @@ return (
                 toggleBestiary={() => setActiveModal(UI_MODALS.BESTIARY)}
                 toggleRules={() => setActiveModal(UI_MODALS.RULES)}
                 toggleSnapshots={() => setActiveModal(UI_MODALS.SNAPSHOTS)}
+                onRegisterReset={(fn) => { resetLayoutRef.current = fn; }}
               />
             ) : (
               <MainDisplay

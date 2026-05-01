@@ -116,8 +116,8 @@ const MapDisplay = ({ encounter }) => {
       ctx.restore();
     }
 
-    // Draw base terrain (tiled background)
-    const baseTileImg = assetCache[map?.config?.baseTile || 'grass_lush'];
+    // Draw base terrain (tiled background) — only when a tile is explicitly set
+    const baseTileImg = map?.config?.baseTile ? assetCache[map.config.baseTile] : null;
     if (baseTileImg) {
       ctx.save();
       const pattern = ctx.createPattern(baseTileImg, 'repeat');

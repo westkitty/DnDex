@@ -27,7 +27,7 @@ const INITIAL_STATE = {
       gridSize: 50,
       width: 30,
       height: 30,
-      baseTile: 'grass_lush',
+      baseTile: null,
       customAssets: {}
     }
   },

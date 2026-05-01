@@ -1,12 +1,22 @@
 import React, { useState, useRef } from 'react';
-import { 
+import {
   ChevronRight, ChevronLeft, Undo, Redo, Book, UserPlus, Ghost,
-  Settings, Download, Shield, Swords, FileUp, Skull, Camera, Plus, Layout, RotateCcw, LayoutDashboard
+  Settings, Download, Shield, Swords, FileUp, Skull, Camera, Plus, Layout, RotateCcw, LayoutDashboard,
+  Lock, Unlock, Palette
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import TacticalAlertStack from './TacticalAlertStack';
 import { useToast } from './toastContext';
 import { cn } from './entity-card/entityCardUtils';
+import { useWorkspace } from './workspace/workspaceContext';
+
+const THEME_OPTIONS = [
+  { id: 'dragon-glass', label: 'Dragon Glass' },
+  { id: 'simple-utility', label: 'Simple Utility' },
+  { id: 'sketchbook', label: 'Sketchbook' },
+  { id: 'terminal', label: 'Terminal' },
+  { id: 'starfleet', label: 'Starfleet' }
+];
 
 /**
  * TOP BAR: High-level command center for the DM_Hub.
@@ -15,12 +25,13 @@ import { cn } from './entity-card/entityCardUtils';
  * - FSM-aligned modal triggers.
  * - Consistent design token application.
  */
-const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view, setView }) => {
-  const { 
+const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view, setView, onResetLayout }) => {
+  const {
     state, advanceTurn, undo, redo, canUndo, canRedo,
     addEntity, importState, exportState, clearAlert, resolveConcentration, clearEncounter, resetMap
   } = encounter;
   const { showToast } = useToast();
+  const { theme, setTheme, layoutLocked, setLayoutLocked } = useWorkspace();
   const [showExport, setShowExport] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const fileInputRef = useRef(null);
@@ -226,6 +237,41 @@ const TopBar = ({ encounter, toggleRules, toggleBestiary, toggleSnapshots, view,
                   exit={{ opacity: 0, y: 10 }}
                   className="absolute right-0 top-full mt-3 w-56 glass-dark border border-white/10 rounded-2xl p-2 shadow-2xl z-50"
                 >
+                  {/* Layout & Theme */}
+                  <div className="px-3 py-2 border-b border-white/5 mb-2">
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Layout & Theme</span>
+                  </div>
+                  <label className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-xl cursor-pointer">
+                    <Palette className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <select
+                      aria-label="Theme"
+                      value={theme}
+                      onChange={(e) => setTheme(e.target.value)}
+                      className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-200 outline-none flex-1"
+                    >
+                      {THEME_OPTIONS.map((o) => (
+                        <option key={o.id} value={o.id} className="bg-slate-900">{o.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    onClick={() => setLayoutLocked((v) => !v)}
+                    className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 flex items-center gap-3"
+                  >
+                    {layoutLocked ? <Unlock className="w-3.5 h-3.5 text-amber-400" /> : <Lock className="w-3.5 h-3.5 text-slate-400" />}
+                    {layoutLocked ? 'Unlock Layout' : 'Lock Layout'}
+                  </button>
+                  {onResetLayout && (
+                    <button
+                      onClick={onResetLayout}
+                      className="w-full text-left px-3 py-2.5 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-3"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" /> Reset Layout
+                    </button>
+                  )}
+                  <div className="h-px bg-white/5 my-2" />
+
+                  {/* Data Management */}
                   <div className="px-3 py-2 border-b border-white/5 mb-2">
                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Data Management</span>
                   </div>

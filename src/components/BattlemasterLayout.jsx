@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import MapDisplay from './MapDisplay';
 import NowActingPanel from './NowActingPanel';
 import InitiativeLedger from './InitiativeLedger';
 import BattlemasterQuickActions from './BattlemasterQuickActions';
-import AppToolRail from './AppToolRail';
 import DockableWorkspace from './workspace/DockableWorkspace';
 import DockablePanel from './workspace/DockablePanel';
 import BattlemasterContextDock from './BattlemasterContextDock';
@@ -18,22 +17,14 @@ const defaultPanels = () => ({
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRules, toggleSnapshots }) => {
+const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRules, toggleSnapshots, onRegisterReset }) => {
   const [panels, setPanels] = useState(defaultPanels);
   const [leftWidth, setLeftWidth] = useState(340);
   const [rightWidth, setRightWidth] = useState(380);
   const [bottomHeight, setBottomHeight] = useState(230);
   const [isResizing, setIsResizing] = useState(null);
-  const { layoutLocked, mode } = useWorkspace();
+  const { layoutLocked } = useWorkspace();
   const dragRef = useRef({ x: 0, width: 0 });
-
-  const minimizedPanels = useMemo(() => {
-    const items = {};
-    Object.values(panels).forEach((panel) => {
-      if (panel.minimized) items[panel.id] = panel.title;
-    });
-    return items;
-  }, [panels]);
 
   const bumpFocus = (id) => {
     setPanels((prev) => {
@@ -124,13 +115,18 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
     });
   };
 
-  const resetLayout = () => {
+  const resetLayout = useCallback(() => {
     if (!window.confirm('Reset workspace layout? Encounter data will not change.')) return;
     setPanels(defaultPanels());
     setLeftWidth(340);
     setRightWidth(380);
     setBottomHeight(230);
-  };
+  }, []);
+
+  useEffect(() => {
+    onRegisterReset?.(resetLayout);
+    return () => onRegisterReset?.(null);
+  }, [onRegisterReset, resetLayout]);
 
   useEffect(() => {
     const onResize = () => {
@@ -190,13 +186,7 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
   return (
     <DockableWorkspace>
       <div className="flex h-full w-full overflow-hidden">
-        <AppToolRail minimizedPanels={minimizedPanels} onRestorePanel={restorePanel} onResetLayout={resetLayout} />
-
         <div className="relative flex-1 h-full">
-          <div className="absolute top-2 left-2 z-40 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-[10px] text-slate-300 pointer-events-none">
-            {mode === 'combat' ? 'Combat mode keeps live turn controls visible.' : 'Prep mode focuses on setup tools before initiative.'}
-          </div>
-
           <div className="flex h-full w-full">
             {leftDockVisible && (
               <div style={{ width: panels.left.collapsed ? 44 : leftWidth }} className="h-full relative">

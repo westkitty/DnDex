@@ -2475,4 +2475,167 @@ node /Users/andrew/Projects/DM_Hub/.tmp-dndex-capture-after-tools.mjs
 - `Correction:`
   - `Fact:` Entry 68 includes stale commit metadata (`Commit Hash: a6cddb7ec47ba261cd88c7be7e5ed47f96360e41`) that does not match repository history; actual `HEAD` at this pass baseline was `ea2c6cc9a74e8120efc713c272a96a13dc37fec2`. Recorded here append-only, without rewriting prior entry.
 - `State After Completion:` Gateway now uses the real D20 Starsilk MP4 and retains mandatory non-persistent behavior. Validation suite passes (build/test/lint/smoke). No onboarding, encounter-state, undo/redo, `useEncounterState.js`, or `MapDisplay.jsx` behavior changes were introduced.
+
+### Entry 70 - Stabilization Audit Pass (2026-05-01)
+- `Summary:` Independent stabilization audit verifying gateway animation, build integrity, and visual quality. No regression found — all issues reported in the takeover prompt were already resolved by Entry 69 commits.
+- `Reason / Intent:` New session received a takeover prompt claiming broken animation and amateur UI. This audit verifies the actual current state with evidence rather than assumptions.
+- `Files Read:`
+  - `/Users/andrew/Projects/DM_Hub/DnDex_Bible.md`
+  - `/Users/andrew/Projects/DM_Hub/docs/handoffs/CLAUDE_SESSION_HANDOFF_AUDIT_2026-04-30.md`
+  - `/Users/andrew/Projects/DM_Hub/src/App.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/components/gateway/GatewaySplash.jsx`
+  - `/Users/andrew/Projects/DM_Hub/src/index.css`
+  - `/Users/andrew/Projects/DM_Hub/vite.config.js`
+  - `/Users/andrew/Projects/DM_Hub/package.json`
+  - `/Users/andrew/Projects/DM_Hub/scripts/smoke/battlemaster-dockable.mjs`
+- `Files Changed:` None (audit only — DnDex_Bible.md append)
+- `Commands Run:`
+```bash
+git status --short && git branch --show-current && git log --oneline -n 12
+git show --stat 5a14e7d 88409e6 ea2c6cc cd4f576 892ae02
+npm run build
+npx vitest run
+npm run lint
+node scripts/smoke/battlemaster-dockable.mjs
+# Headless Playwright: gateway video state check
+# Headless Playwright: gateway screenshot captured
+npm run dev  # verified base path 200 response
+```
+- `Validation Results:`
+  - `Fact:` Build PASS — `dist/assets/d20starsilk-BS1X3Wi6.mp4` bundled correctly.
+  - `Fact:` Vitest PASS — 88/88 tests.
+  - `Fact:` Lint PASS — 0 errors, 8 warnings (known hook dep omissions × worktree duplicates).
+  - `Fact:` Smoke PASS — 28/28 checks.
+  - `Fact:` Dev server responds HTTP 200 at `http://localhost:5173/DnDex/`.
+- `Animation Findings:`
+  - `Fact:` Headless video state: `readyState: 4`, `paused: false`, `currentTime: 2.25s`, `error: null`. Video plays correctly in preview build.
+  - `Fact:` Fallback text ("Portal feed unavailable") was NOT shown.
+  - `Fact:` Gateway screenshot confirms D20 Starsilk animation renders correctly with indigo/teal glow.
+- `Root Cause of Reported Regression:`
+  - `Fact:` The reported animation failure was the state BETWEEN commits `892ae02` (SVG glyph gateway, no video) and `88409e6` (video-first gateway). Entry 69 fixed this.
+  - `Fact:` The "amateur" appearance was the SVG-glyph fallback or the "Portal feed unavailable" text that appeared before `88409e6` committed the video file alongside the video-import code.
+  - `Fact:` Both commits `88409e6` and `5a14e7d` are on `main` and were pushed. The repository is in the fixed state.
+- `Decisions:`
+  - No code changes made. State is verified correct.
+  - Correct command to run the app: `npm run preview` (serves `dist/` at `http://127.0.0.1:4173/DnDex/`) or `npm run dev` (serves at `http://localhost:5173/DnDex/`).
+  - The `/DnDex/` path suffix is mandatory (set by `base: '/DnDex/'` in `vite.config.js`).
+- `How to test opening animation again:`
+  1. `npm run build && npm run preview`
+  2. Navigate to `http://127.0.0.1:4173/DnDex/`
+  3. Gateway splash appears immediately with D20 Starsilk video playing
+  4. Click the video panel, press Enter, or press Space to proceed
+  5. No localStorage/sessionStorage key controls this — gateway is mandatory and non-persistent every session
+- `State After Completion:` Verified stable. Branch `main`, HEAD `5a14e7d`. No source files changed. All validation checks pass.
 - `Next Step / Handoff:` Perform manual visual acceptance check on gateway feel/readability in Andrew’s normal runtime environment.
+
+---
+
+## Entry 39 — Battlemaster Layout Recovery Pass
+
+**Date:** 2026-05-01
+**Trigger:** User complaint that app looks "amateur" and "worse than an earlier version." Visual regression audit confirmed the dockable workspace pass (commit `0adf5bc`) introduced a permanent left-edge tool rail, floating mode tooltip, 4-button panel chrome, and grass-texture default map — all of which degraded the primary DM combat workflow without proportional benefit.
+
+### Root Cause
+
+The dockable workspace pass (`feat: add dockable battlemaster workspace and theme system`) added power-user layout controls (Theme, Lock Layout, Reset Layout) and a mode toggle (Combat/Prep) to a permanently visible `AppToolRail` sidebar. This sidebar:
+1. Consumed ~64px of the left edge, causing the Combat panel to be partially hidden behind it in default state
+2. Surfaced configuration controls (Theme, Lock, Reset) directly on the live combat surface
+3. Added a floating tooltip overlay that could not be cleanly dismissed
+4. Left per-panel headers with 4 always-visible control buttons instead of 1
+
+The default `baseTile: 'grass_lush'` in `INITIAL_STATE` also caused every new empty map to show a green terrain texture, which conflicted with the tactical command-center aesthetic.
+
+### Audit Evidence
+
+Visual regression screenshots captured and committed to `.playwright-mcp/audit/`:
+
+| Folder | Commit | What it shows |
+|--------|--------|---------------|
+| `before_dockable/` | `7a699bd` | Original 3-column layout — clean baseline |
+| `before_gateway/` | `bde4c0c` | Dockable workspace, no gateway — regression visible |
+| `current_HEAD/` | `5a14e7d` | Pre-fix: tool rail, tooltip, clipped panel |
+| `after_recovery/` | this commit | Recovered layout |
+
+Key comparative images:
+- `before_dockable/02_battlemaster_view.png` — the target baseline
+- `after_recovery/04_empty_fresh_no_encounter.png` — confirmed match
+
+### Implementation Strategy
+
+Preserve dockable mechanics as optional power-user layer. Restore professional 3-column default. Move configuration controls to TopBar Settings. Progressive disclosure for advanced panel chrome.
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/hooks/useEncounterState.js` | `baseTile: 'grass_lush'` → `baseTile: null` (dark grid is default) |
+| `src/components/MapDisplay.jsx` | Handle `baseTile: null` — skip tile draw when null, showing plain dark canvas |
+| `src/components/BattlemasterLayout.jsx` | Removed `AppToolRail` import/usage; removed floating mode tooltip div; made `resetLayout` a stable `useCallback`; added `onRegisterReset` prop; removed unused `mode` and `minimizedPanels` vars |
+| `src/components/workspace/DockablePanel.jsx` | Progressive disclosure: Collapse button always visible; Undock/Reset/Minimize wrapped in `opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150` — keyboard reachable |
+| `src/components/TopBar.jsx` | Added `useWorkspace` import; added `THEME_OPTIONS` constant; added `onResetLayout` prop; added Layout & Theme section to Settings menu (Theme selector, Lock Layout, Reset Layout) |
+| `src/App.jsx` | Added `useRef`; added `resetLayoutRef`; threaded `onRegisterReset` to BattlemasterLayout and `onResetLayout` to TopBar |
+
+`AppToolRail.jsx`, `ThemeSelector.jsx`, `LayoutControls.jsx` — **not deleted** (still importable) but no longer rendered anywhere. Safe to delete in a future cleanup pass.
+
+### Commands Run
+
+```bash
+npm run build     # ✓ built in 26.54s — 0 errors
+npx vitest run    # ✓ 88/88 tests passed
+npx eslint src/   # ✓ 0 errors, 2 pre-existing warnings (unchanged)
+# Playwright smoke: gateway plays, click enters, 3-column layout verified, dark grid confirmed
+```
+
+### Build Result
+
+BattlemasterLayout chunk shrank from 21.79 kB → 18.58 kB gzip as a side effect of removing AppToolRail.
+
+### Acceptance Checks Confirmed
+
+- [x] `npm run build` passes
+- [x] `vitest run` passes (88/88)
+- [x] `lint` — 0 new errors
+- [x] Gateway plays, Enter/Space/click enters app
+- [x] Default Battlemaster: full left Combat panel visible
+- [x] Default Battlemaster: full center map visible (dark grid)
+- [x] Default Battlemaster: full right Initiative panel visible
+- [x] No panel text clipped
+- [x] No tooltip overlapping combat content
+- [x] No Theme/Lock Layout/Reset Layout on live combat surface
+- [x] Layout controls reachable via Settings (gear icon) → Layout & Theme
+- [x] Dark tactical grid is default for empty map
+- [x] Demo encounter works
+- [x] Active combatant readable at a glance (large name + HP on left)
+- [x] Add Hero / Add Foe / Quick-start Demo Encounter reachable
+
+### Remaining Risks / Known Issues
+
+1. **Existing saved sessions:** Users with encounter data in IndexedDB from before this pass will still see `baseTile: 'grass_lush'` because their persisted `map.config.baseTile` overrides the new default. This is correct behavior — we only change the default for new encounters.
+2. **AppToolRail orphan files:** `AppToolRail.jsx`, `ThemeSelector.jsx` (standalone), `LayoutControls.jsx` are no longer rendered anywhere but still exist. They are safe to delete in a future cleanup PR.
+3. **Prep/Combat mode toggle:** The `mode` concept (combat vs prep) still exists in WorkspaceContext and is persisted in localStorage, but no visual element currently reflects it after the tool rail removal. Mode switching is inert until a future pass re-exposes it meaningfully.
+4. **Minimized panels:** If a user minimizes a panel, there is no longer a restore surface (previously the tool rail showed minimized panel icons). This edge case is low-priority but needs a future solution (e.g., a restore indicator in the collapsed PREP DOCK or TopBar).
+
+### How to Run the Verified App
+
+```bash
+npm run build && npm run preview
+# Navigate to: http://127.0.0.1:4173/DnDex/
+```
+
+### How to Reset Layout / localStorage
+
+```javascript
+// In browser console:
+localStorage.clear();
+indexedDB.deleteDatabase('keyval-store');
+location.reload();
+// Gateway will show fresh; Battlemaster defaults to dark grid, empty 3-column layout
+```
+
+### State After Completion
+
+Branch `main`, builds clean. All 88 tests pass. Visual layout matches `before_dockable` baseline clarity while preserving full dockable workspace mechanics as opt-in.
+
+### Next Step / Handoff
+
+Visual quality is restored to the professional 3-column combat layout. Gateway remains intact. The issue is resolved. The Prep/Combat mode concept and the orphan AppToolRail files are the most obvious remaining cleanup targets.
