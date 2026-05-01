@@ -62,7 +62,6 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
   };
 
   const minimizePanel = (id) => updatePanel(id, { minimized: true });
-  const restorePanel = (id) => updatePanel(id, { minimized: false, collapsed: false });
   const resetPanelPosition = (id) => {
     if (layoutLocked) return;
     setPanels((prev) => {
@@ -197,7 +196,7 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onChange={updatePanel}
                   onFocus={bumpFocus}
                   onMinimize={minimizePanel}
-                  onRestore={restorePanel}
+
                   onRedock={redockPanel}
                   onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}
@@ -258,7 +257,7 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onChange={updatePanel}
                   onFocus={bumpFocus}
                   onMinimize={minimizePanel}
-                  onRestore={restorePanel}
+
                   onRedock={redockPanel}
                   onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}
@@ -291,7 +290,7 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onChange={updatePanel}
                   onFocus={bumpFocus}
                   onMinimize={minimizePanel}
-                  onRestore={restorePanel}
+
                   onRedock={redockPanel}
                   onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}
@@ -358,7 +357,7 @@ const BattlemasterLayout = ({ encounter, activeEntity, toggleBestiary, toggleRul
                   onChange={updatePanel}
                   onFocus={bumpFocus}
                   onMinimize={minimizePanel}
-                  onRestore={restorePanel}
+
                   onRedock={redockPanel}
                   onResetPosition={resetPanelPosition}
                   onUndock={undockPanel}

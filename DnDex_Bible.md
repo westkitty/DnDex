@@ -2530,7 +2530,7 @@ npm run dev  # verified base path 200 response
 
 ---
 
-## Entry 39 — Battlemaster Layout Recovery Pass
+## Entry 71 — Battlemaster Layout Recovery Pass
 
 **Date:** 2026-05-01
 **Trigger:** User complaint that app looks "amateur" and "worse than an earlier version." Visual regression audit confirmed the dockable workspace pass (commit `0adf5bc`) introduced a permanent left-edge tool rail, floating mode tooltip, 4-button panel chrome, and grass-texture default map — all of which degraded the primary DM combat workflow without proportional benefit.
@@ -2639,3 +2639,48 @@ Branch `main`, builds clean. All 88 tests pass. Visual layout matches `before_do
 ### Next Step / Handoff
 
 Visual quality is restored to the professional 3-column combat layout. Gateway remains intact. The issue is resolved. The Prep/Combat mode concept and the orphan AppToolRail files are the most obvious remaining cleanup targets.
+
+---
+
+## Entry 72 — Battlemaster Closeout Pass
+
+**Date:** 2026-05-01
+**Trigger:** Narrow follow-up to Entry 71 addressing three loose ends: Bible ledger numbering error, minimized-panel restore gap, and dormant Prep/Combat mode state.
+
+### Changes
+
+**1. Bible entry numbering corrected**
+Entry 71 (the recovery pass) was erroneously appended as "Entry 39". Fixed before pushing: renamed to "Entry 71" in the same unpushed commit. No history rewrite required.
+
+**2. Minimize trapdoor closed**
+`DockablePanel.jsx`: the Minimize button (X icon in progressive-disclosure hover group) is now only shown for undocked (floating) panels. Docked panels had no restore path — once minimized they disappeared with nothing to click to get them back. Floating panels can still be minimized; users recover via **Settings → Reset Layout** (tooltip updated accordingly). `onRestore` prop removed from `DockablePanel` and all call sites; `restorePanel` function removed from `BattlemasterLayout`.
+
+**3. Prep/Combat mode state documented**
+`WorkspaceProvider.jsx`: added inline comment marking `mode`/`setMode` as dormant since the recovery pass removed `AppToolRail.jsx` (the only consumer). State preserved in context and localStorage to avoid breaking persisted preferences. `AppToolRail.jsx` and its dependencies (`ThemeSelector.jsx`, `LayoutControls.jsx`) remain in the file tree as orphans — safe to delete in a future cleanup sweep.
+
+**4. Smoke script updated**
+`scripts/smoke/battlemaster-dockable.mjs`: removed stale Combat/Prep mode button checks; updated minimize/restore test to reflect new behavior (floating panel minimize → hidden, Settings → Reset Layout confirms recovery); added `page.once('dialog', ...)` handler for the `window.confirm()` in `resetLayout`; added Settings dropdown open/close sequencing for theme selector test.
+
+### Acceptance Results
+
+| Check | Result |
+|-------|--------|
+| `npm run build` | ✓ Clean (49s, PWA precache 16 entries) |
+| `npx vitest run` | ✓ 88/88 pass |
+| `npm run lint` | ✓ 0 errors, 8 pre-existing warnings (MapDisplay + useEncounterState react-hooks/exhaustive-deps) |
+| `node scripts/smoke/battlemaster-dockable.mjs` | ✓ 27/27 checks pass |
+
+### Files Changed
+
+- `DnDex_Bible.md` — renamed Entry 39 → Entry 71; appended Entry 72
+- `src/components/workspace/DockablePanel.jsx` — removed Minimize button for docked panels; removed `onRestore` prop
+- `src/components/BattlemasterLayout.jsx` — removed `onRestore` from all DockablePanel call sites; removed `restorePanel` function
+- `src/components/workspace/WorkspaceProvider.jsx` — added dormancy comment on `mode`/`setMode`
+- `scripts/smoke/battlemaster-dockable.mjs` — updated stale tests, added dialog handling
+
+### Remaining Risks / Future Cleanup
+
+- `AppToolRail.jsx`, `ThemeSelector.jsx`, `LayoutControls.jsx` — orphaned, not rendered anywhere. Safe to delete.
+- `mode`/`setMode` in `WorkspaceContext` — if Prep/Combat mode is ever revived, these are ready. Otherwise delete with the orphans.
+- Minimize for floating panels still creates a dismiss-with-no-restore-button UX. `Reset Layout` is the recovery, but a dedicated "Restore All Panels" button in Settings would be cleaner.
+- 8 pre-existing lint warnings in `MapDisplay.jsx` and `useEncounterState.js` (`react-hooks/exhaustive-deps`) are intentional false positives — the deps are excluded to avoid render loops. Should be annotated with `// eslint-disable-next-line` comments in a future pass.

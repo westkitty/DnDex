@@ -145,13 +145,8 @@ const runSmoke = async () => {
     await page.waitForSelector('canvas', { timeout: 10000 });
     ok('map canvas renders', await page.locator('canvas').isVisible());
 
-    const combatButton = page.getByRole('button', { name: 'Combat' });
-    const prepButton = page.getByRole('button', { name: 'Prep' });
-    ok('combat mode button visible', await combatButton.isVisible());
-    ok('prep mode button visible', await prepButton.isVisible());
-
-    await prepButton.click();
-    await combatButton.click();
+    // AppToolRail (Combat/Prep mode buttons) removed in recovery pass 2026-05-01.
+    // Mode state is dormant; no mode toggle UI exists in the rendered app.
 
     const leftPanel = page.locator('section[aria-label="Combat"]').first();
     const rightPanel = page.locator('section[aria-label="Initiative"]').first();
@@ -181,23 +176,28 @@ const runSmoke = async () => {
     const dragEnd = await floatingLeft.boundingBox();
     ok('panel drag works', Boolean(dragStart && dragEnd && Math.abs(dragEnd.x - dragStart.x) > 30));
 
+    // Minimize is only available for undocked (floating) panels.
+    // Minimized floating panels are recovered via Settings → Reset Layout.
     await floatingLeft.getByTitle('Minimize Panel').click({ force: true });
-    const restoreButton = page.getByRole('button', { name: 'Restore Panel' }).first();
-    const canRestore = await restoreButton.isVisible().catch(() => false);
-    if (canRestore) {
-      await restoreButton.click({ force: true });
-      await page.locator('section[aria-label="Combat"]').last().getByTitle('Redock Panel').click({ force: true });
-      ok('panel minimize restore redock works', true);
-    } else {
-      ok('panel minimize restore redock works', false, 'Restore Panel button not visible after minimizing panel.');
-    }
+    const floatingGone = await page.locator('section[aria-label="Combat"]').last().isHidden().catch(() => true);
+    ok('floating panel minimize hides panel', floatingGone);
 
+    // Open Settings dropdown to access Reset Layout and Theme.
+    const settingsButton = page.locator('button:has(svg.lucide-settings)').first();
+    page.once('dialog', (dialog) => dialog.accept());
+    await settingsButton.click();
+    await page.locator('text=Reset Layout').click({ force: true });
+    ok('reset layout restores minimized panels', await page.locator('section[aria-label="Combat"]').first().isVisible());
+
+    // Theme selector is inside the Settings dropdown — re-open it.
+    await settingsButton.click();
     await page.getByLabel('Theme').selectOption('terminal');
     ok(
       'theme selector updates root theme',
       await page.evaluate(() => document.documentElement.dataset.theme === 'terminal')
     );
     await page.getByLabel('Theme').selectOption('dragon-glass');
+    await settingsButton.click(); // close dropdown
 
     await page.getByTitle('Tactical Map').click();
     await page.getByTitle('List View').click();

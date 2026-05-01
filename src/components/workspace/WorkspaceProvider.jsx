@@ -24,6 +24,8 @@ const readPrefs = () => {
 export const WorkspaceProvider = ({ children }) => {
   const initial = readPrefs();
   const [theme, setTheme] = useState(initial?.theme || 'dragon-glass');
+  // mode/setMode: dormant since 2026-05-01 recovery pass removed AppToolRail.
+  // Preserved in context + localStorage to avoid breaking persisted prefs.
   const [mode, setMode] = useState(initial?.mode || 'combat');
   const [layoutLocked, setLayoutLocked] = useState(initial?.layoutLocked || false);
 

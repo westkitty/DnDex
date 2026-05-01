@@ -14,7 +14,6 @@ const DockablePanel = ({
   onChange,
   onFocus,
   onMinimize,
-  onRestore,
   onRedock,
   onResetPosition,
   onUndock,
@@ -149,14 +148,16 @@ const DockablePanel = ({
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
-            <button
-              aria-label={state.minimized ? 'Restore Panel' : 'Minimize Panel'}
-              title={state.minimized ? 'Restore Panel' : 'Minimize Panel'}
-              onClick={() => (state.minimized ? onRestore(id) : onMinimize(id))}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            {!state.docked && (
+              <button
+                aria-label="Minimize Panel"
+                title="Minimize Panel (recover via Settings → Reset Layout)"
+                onClick={() => onMinimize(id)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </header>
