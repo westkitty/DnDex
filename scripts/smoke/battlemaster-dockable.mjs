@@ -126,8 +126,12 @@ const runSmoke = async () => {
       await page.waitForTimeout(150);
       ok('gateway enter control visible', await gatewayEnter.isVisible().catch(() => false));
       ok('gateway enter control enabled', await gatewayEnter.isEnabled().catch(() => false));
-      // DOM click keeps the workaround scoped to the animated gateway control.
-      await gatewayEnter.evaluate((button) => button.click());
+      // mouse.click at center dispatches trusted pointer events the animated button requires.
+      const gwBox = await gatewayEnter.boundingBox();
+      if (gwBox === null) {
+        throw new Error("Gateway enter control has no bounding box");
+      }
+      await page.mouse.click(gwBox.x + gwBox.width / 2, gwBox.y + gwBox.height / 2);
       await page.waitForSelector('[data-testid="gateway-splash"]', { state: 'detached', timeout: 15000 });
       ok('gateway dismisses after enter', true);
     } else {
