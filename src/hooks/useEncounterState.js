@@ -86,16 +86,17 @@ export const useEncounterState = () => {
     if (!state.isHydrated) return;
     
     const saveToDisk = async () => {
+      const latestState = stateRef.current;
       setSyncStatus(SYNC_STATES.SAVING);
       try {
         const diskState = await get('dm-hub-state');
         // Simple conflict detection based on timestamp
-        if (diskState && diskState.lastUpdated > state.lastUpdated) {
+        if (diskState && diskState.lastUpdated > latestState.lastUpdated) {
           setSyncStatus(SYNC_STATES.CONFLICT);
           return;
         }
 
-        const { history: _, historyPointer: __, isHydrated: ___, ...toSave } = state;
+        const { history: _, historyPointer: __, isHydrated: ___, ...toSave } = latestState;
         await set('dm-hub-state', toSave);
         
         const channel = new BroadcastChannel(SYNC_CHANNEL);

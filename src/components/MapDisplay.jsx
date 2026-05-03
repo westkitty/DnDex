@@ -805,7 +805,7 @@ const Token = ({ entity, pos, onMove, isDraggable, isActive, zoom = 1, viewOffse
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, offset, onMove]);
+  }, [isDragging, offset, onMove, viewOffset.x, viewOffset.y, zoom]);
 
   return (
     <motion.div 
